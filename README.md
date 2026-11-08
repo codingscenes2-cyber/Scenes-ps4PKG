@@ -21,7 +21,13 @@ Open the running Preview. `npm run build` produces `dist/`; deploy it to any sta
 
 ## Publish to GitHub Pages
 
-Run `npm run build:pages` to regenerate the `docs/` directory for the `/Scenes-ps4PKG/` URL. Commit the updated source and `docs/` together; the Pages source uses the task branch and `/docs`.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:fe9ef79c956d0a4ba12d104e856e31b1d9776d35d39bd50cb1a41ff9b56ce17b -->
+
+Run `npm run build:pages` to regenerate the `docs/` directory for the `/Scenes-ps4PKG/` URL. Commit the updated source and `docs/` together. To enable GitHub Pages, open repository Settings → Pages, choose **Deploy from a branch**, and select `coderabbit/build-soul-land-rpg/47064c05` and `/docs`.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## Play
 
