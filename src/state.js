@@ -6,6 +6,7 @@ import {
   ATTRS,
   REGIONS,
 } from "./data.js";
+import { campaignState } from "./campaign.js";
 export const SAVE_KEY = "soul-land-save-v1";
 export const softCap = (v) => (v <= 30 ? v : 30 + (v - 30) * 0.45);
 export const limits = (s) => ({
@@ -13,11 +14,15 @@ export const limits = (s) => ({
   stamina: 70 + softCap(s.attrs.Endurance) * 3,
   focus: 45 + softCap(s.attrs.Mind) * 5,
 });
+export const flaskCount = (s) =>
+  DIFFICULTIES[s.difficulty].flasks + (s.choices?.[2] === "mercy" ? 1 : 0);
 export const levelCost = (s) => Math.floor(80 * Math.pow(1.17, s.level - 1));
 export function createCharacter(c) {
   const cl = CLASSES.find((x) => x.name === c.className) || CLASSES[0];
   const s = {
     version: 1,
+    campaign: campaignState(null),
+    defeatedCounts: {},
     name: c.name?.trim().slice(0, 24) || "The Unnamed",
     className: cl.name,
     gender: c.gender || "Unbound",
@@ -81,6 +86,22 @@ export function loadSave(storage = globalThis.localStorage) {
       !s.attrs ||
       !ATTRS.every((a) => Number.isFinite(s.attrs[a])) ||
       !Array.isArray(s.inventory) ||
+      !s.inventory.every((v) => typeof v === "string") ||
+      !["events", "secret", "spells", "relics"].every(
+        (k) => Array.isArray(s[k]) && s[k].every((v) => typeof v === "string"),
+      ) ||
+      !["bosses", "discovered"].every(
+        (k) =>
+          Array.isArray(s[k]) &&
+          s[k].every((v) => Number.isInteger(v) && !!REGIONS[v]),
+      ) ||
+      !["gender", "appearance", "origin", "history"].every(
+        (k) => s[k] === undefined || typeof s[k] === "string",
+      ) ||
+      (s.dropped !== null &&
+        s.dropped !== undefined &&
+        (!REGIONS[s.dropped.region] ||
+          !["x", "z", "amount"].every((k) => Number.isFinite(s.dropped[k])))) ||
       !["bosses", "discovered", "events", "secret", "spells", "relics"].every(
         (k) => Array.isArray(s[k]),
       ) ||
@@ -107,7 +128,20 @@ export function loadSave(storage = globalThis.localStorage) {
       !Number.isFinite(s.position.z)
     )
       return null;
-    return s;
+    return {
+      ...s,
+      campaign: campaignState(s),
+      defeatedCounts: Object.fromEntries(
+        Object.entries(
+          s.defeatedCounts && typeof s.defeatedCounts === "object"
+            ? s.defeatedCounts
+            : {},
+        ).filter(
+          ([name, count]) =>
+            name.length <= 100 && Number.isInteger(count) && count >= 0,
+        ),
+      ),
+    };
   } catch {
     return null;
   }
@@ -149,7 +183,11 @@ export function receiveDamage(s, raw, blocking = false) {
   const resist = Math.min(0.15, s.attrs.Endurance * 0.003);
   return Math.max(
     1,
-    Math.round(raw * (1 - armour.defence - resist) * (blocking ? 0.25 : 1)),
+    Math.round(
+      raw *
+        (1 - armour.defence - resist) *
+        (blocking ? (s.choices?.[2] === "knowledge" ? 0.2 : 0.25) : 1),
+    ),
   );
 }
 export function deathState(s, position) {
@@ -159,7 +197,7 @@ export function deathState(s, position) {
     hp: max.hp,
     stamina: max.stamina,
     focus: max.focus,
-    flasks: DIFFICULTIES[s.difficulty].flasks,
+    flasks: flaskCount(s),
     dropped:
       s.essence > 0
         ? { amount: s.essence, region: s.region, ...position }

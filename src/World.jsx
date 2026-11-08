@@ -1,5 +1,20 @@
 import React, { useEffect, useRef } from "react";
 import * as T from "three";
+import {
+  createActor,
+  animateActor,
+  playClip,
+  disposeActor,
+} from "./characters";
+import { campaignState, lightBrazier } from "./campaign";
+import {
+  SECRET_GATES,
+  secretOpen,
+  unseal,
+  lightPillar,
+  weatherAt,
+} from "./exploration";
+import { bossMove, attackConnects } from "./combat";
 import { SoftwareRenderer } from "./SoftwareRenderer";
 import { REGIONS, WEAPONS, DIFFICULTIES, SPELLS, ARMOURS } from "./data";
 import { limits, damageFor, receiveDamage, deathState } from "./state";
@@ -55,65 +70,6 @@ function skyTexture(region) {
     g.fill();
   }
   return new T.CanvasTexture(c);
-}
-function makeKnight(color = "#777e72", enemy = false) {
-  const root = new T.Group();
-  const iron = new T.MeshStandardMaterial({
-    color,
-    roughness: 0.65,
-    metalness: 0.55,
-  });
-  const dark = new T.MeshStandardMaterial({ color: "#303830", roughness: 1 });
-  const cape = new T.MeshStandardMaterial({
-    color: enemy ? "#493b35" : "#5b4538",
-    side: T.DoubleSide,
-    roughness: 1,
-  });
-  function mesh(geo, mat, x, y, z) {
-    const m = new T.Mesh(geo, mat);
-    m.position.set(x, y, z);
-    m.castShadow = true;
-    root.add(m);
-    return m;
-  }
-  mesh(new T.CylinderGeometry(0.34, 0.28, 0.65, 7), iron, 0, 1.24, 0);
-  mesh(new T.SphereGeometry(0.24, 8, 7), iron, 0, 1.92, 0);
-  mesh(new T.BoxGeometry(0.32, 0.06, 0.16), dark, 0, 1.96, 0.2);
-  const plume = mesh(new T.BoxGeometry(0.08, 0.19, 0.35), cape, 0, 2.16, -0.04);
-  const legs = [];
-  for (const x of [-0.18, 0.18]) {
-    legs.push(
-      mesh(new T.CylinderGeometry(0.12, 0.09, 0.75, 6), dark, x, 0.5, 0),
-    );
-    mesh(new T.SphereGeometry(0.2, 7, 6), iron, x * 2, 1.49, 0);
-  }
-  const cloth = mesh(new T.PlaneGeometry(0.8, 1.4, 2, 3), cape, 0, 1.05, -0.3);
-  cloth.rotation.x = 0.2;
-  const sword = new T.Group();
-  const blade = new T.Mesh(
-    new T.BoxGeometry(0.09, 1.1, 0.055),
-    new T.MeshStandardMaterial({
-      color: "#c4c5af",
-      metalness: 0.8,
-      roughness: 0.25,
-    }),
-  );
-  blade.position.y = 0.5;
-  sword.add(blade);
-  const guard = new T.Mesh(new T.BoxGeometry(0.36, 0.07, 0.1), iron);
-  sword.add(guard);
-  sword.position.set(0.48, 1, 0.1);
-  sword.rotation.x = 0.7;
-  root.add(sword);
-  mesh(
-    new T.CylinderGeometry(0.34, 0.34, 0.09, 10),
-    iron,
-    -0.47,
-    1.2,
-    0.13,
-  ).rotation.x = Math.PI / 2;
-  root.userData = { sword, legs, cloth, plume };
-  return root;
 }
 export default function World({
   state,
@@ -217,7 +173,27 @@ export default function World({
     for (let i = 0; i < a.count; i++)
       a.setY(i, terrain(a.getX(i), a.getZ(i)) - 0.15);
     groundGeo.computeVertexNormals();
-    add(groundGeo, moss, 0, 0, 0).renderOrder = -10;
+    const groundColors = [];
+    const groundBase = new T.Color(region.color);
+    for (let i = 0; i < a.count; i++) {
+      const x = a.getX(i),
+        z = a.getZ(i);
+      const shade =
+        0.65 +
+        Math.sin(x * 0.23 + Math.cos(z * 0.14)) * 0.08 +
+        Math.cos(z * 0.35 + x * 0.12) * 0.07;
+      const c = groundBase.clone().multiplyScalar(shade);
+      groundColors.push(c.r, c.g, c.b);
+    }
+    groundGeo.setAttribute(
+      "color",
+      new T.Float32BufferAttribute(groundColors, 3),
+    );
+    const groundMaterial = new T.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 1,
+    });
+    add(groundGeo, groundMaterial, 0, 0, 0).renderOrder = -10;
     // The pilgrim road: irregular slabs, ruined walls, and weathered masonry.
     for (let i = 0; i < 70; i++) {
       const z = 24 - i * 1.3,
@@ -430,16 +406,36 @@ export default function World({
       }),
     );
     scene.add(particles);
-    const hero = makeKnight(
-      state?.appearance === "Ember"
-        ? "#9d7961"
-        : state?.appearance === "Frost"
-          ? "#8b9ba6"
-          : "#8b8e7b",
-    );
-    hero.position.set(state?.position?.x || 0, 0, state?.position?.z || 9);
+    let hero = createActor({
+      className: state?.className,
+      weapon: state?.weapon,
+      armour: state?.armour,
+      color:
+        state?.appearance === "Ember"
+          ? "#a2846d"
+          : state?.appearance === "Frost"
+            ? "#91a9b5"
+            : undefined,
+    });
+    let heroEquipment = `${state?.weapon}:${state?.armour}`;
+    hero.position.set(state?.position?.x ?? 0, 0, state?.position?.z ?? 9);
     scene.add(hero);
-    const npc = makeKnight("#a49b76");
+    const npc = createActor({
+      className: [2, 11].includes(state?.region)
+        ? "Knight"
+        : state?.region === 5
+          ? "Sorcerer"
+          : "Cleric",
+      role: "npc",
+      bossIndex: state?.region || 0,
+      weapon:
+        state?.region === 3
+          ? "Rotbound Scythe"
+          : state?.region === 5
+            ? "Ashwood Staff"
+            : "Oathkeeper",
+      color: "#a49b76",
+    });
     npc.position.set(-6, 0, 2);
     scene.add(npc);
     npc.rotation.y = 1;
@@ -454,8 +450,23 @@ export default function World({
     enemyPositions.forEach(([x, z], i) => {
       if (i === 3 && bossDead) return;
       const boss = i === 3;
-      const mesh = makeKnight(boss ? "#5c5550" : "#6d7566", true);
-      if (boss) mesh.scale.setScalar(1.7);
+      const mesh = createActor({
+        className: boss
+          ? "Berserker"
+          : i === 1
+            ? "Sorcerer"
+            : i === 2
+              ? "Knight"
+              : "Assassin",
+        role: boss ? "boss" : "enemy",
+        weapon: boss
+          ? "Griefbringer"
+          : i === 1
+            ? "Ashwood Staff"
+            : "Oathkeeper",
+        bossIndex: state?.region || 0,
+        color: boss ? region.color : undefined,
+      });
       mesh.position.set(x, 0, z);
       scene.add(mesh);
       const health =
@@ -502,6 +513,13 @@ export default function World({
         timer: 1 + i * 0.3,
         ring,
         stagger: 0,
+        poise: boss ? 110 : 32,
+        maxPoise: boss ? 110 : 32,
+        deadTime: 0,
+        turn: 0,
+        move: null,
+        attackOrigin: null,
+        attackFacing: 0,
         repeats: 0,
       });
     });
@@ -640,6 +658,108 @@ export default function World({
         light.visible = false;
       }
     }
+    const memorialPos = new T.Vector3(11, 0, -7);
+    const memorial = add(new T.BoxGeometry(1.1, 2.6, 0.5), stone, 11, 1.3, -7);
+    add(
+      new T.TorusGeometry(0.28, 0.035, 4, 16),
+      new T.MeshBasicMaterial({ color: "#8abdb8" }),
+      11,
+      2,
+      -6.73,
+    );
+    const braziers = [];
+    if ((state?.region || 0) === 0) {
+      [
+        [-12, 1],
+        [11, -17],
+        [-13, -28],
+      ].forEach(([x, z], i) => {
+        add(new T.CylinderGeometry(0.4, 0.65, 1.4, 6), stone, x, 0.7, z);
+        const fire = add(new T.OctahedronGeometry(0.34), flameMat, x, 1.65, z);
+        fire.visible = campaignState(state).braziers.includes(i);
+        braziers.push({ x, z, fire, id: i });
+      });
+    }
+    const sealPos = new T.Vector3(-10, 0, -35);
+    const gate = SECRET_GATES[state?.region || 0];
+    const seal = add(
+      gate.kind === "heavy" || gate.kind === "charged"
+        ? new T.BoxGeometry(2.7, 3, 0.9)
+        : new T.OctahedronGeometry(0.7),
+      gate.kind === "charged"
+        ? new T.MeshStandardMaterial({
+            color: "#a9d2da",
+            transparent: true,
+            opacity: 0.7,
+          })
+        : stone,
+      -10,
+      1.4,
+      -34,
+    );
+    if ((state?.region || 0) === 1) seal.material = bark;
+    const pillars = [];
+    if (state?.region === 5)
+      [
+        [-12, 1],
+        [11, -17],
+        [-13, -28],
+      ].forEach(([x, z], id) => {
+        const crystal = add(
+          new T.OctahedronGeometry(0.65),
+          new T.MeshBasicMaterial({
+            color: campaignState(state).pillars.includes(id)
+              ? "#c8dfb5"
+              : "#617d86",
+          }),
+          x,
+          1.4,
+          z,
+        );
+        pillars.push({ x, z, id, crystal });
+      });
+    const weather = weatherAt(state || { region: 0, worldDay: 1 });
+    const weatherPositions = new Float32Array(120 * 3);
+    for (let i = 0; i < 120; i++) {
+      weatherPositions[i * 3] = (rnd() - 0.5) * 45;
+      weatherPositions[i * 3 + 1] = rnd() * 18;
+      weatherPositions[i * 3 + 2] = -40 + rnd() * 65;
+    }
+    const weatherGeo = new T.BufferGeometry();
+    weatherGeo.setAttribute(
+      "position",
+      new T.BufferAttribute(weatherPositions, 3),
+    );
+    const weatherPoints = new T.Points(
+      weatherGeo,
+      new T.PointsMaterial({
+        color: weather.snow ? "#dae4e4" : weather.rain ? "#a4bfc4" : "#e3b875",
+        size: weather.snow ? 0.07 : 0.045,
+        transparent: true,
+        opacity: 0.6,
+      }),
+    );
+    weatherPoints.userData.rain = weather.rain;
+    scene.add(weatherPoints);
+    const banners = [];
+    for (const [x, z] of [
+      [-4, -9],
+      [9, -21],
+      [-8, -37],
+    ]) {
+      add(new T.CylinderGeometry(0.04, 0.04, 4, 5), bark, x, 2, z);
+      const banner = add(
+        new T.PlaneGeometry(0.85, 1.5, 3, 5),
+        new T.MeshStandardMaterial({
+          color: (state?.region || 0) === 2 ? "#623d3b" : "#505747",
+          side: T.DoubleSide,
+        }),
+        x + 0.44,
+        3,
+        z,
+      );
+      banners.push(banner);
+    }
     const clock = new T.Clock();
     const keys = {};
     const input = { x: 0, z: 0 };
@@ -656,6 +776,51 @@ export default function World({
       deathTimer = 0,
       holding = 0;
     const effects = [];
+    const pending = [];
+    const echoHazards = [];
+    const labels = [];
+    function floating(text, pos, harm = false) {
+      const node = document.createElement("span");
+      node.className = `combat-float${harm ? " harm" : ""}`;
+      node.textContent = text;
+      el.append(node);
+      labels.push({
+        node,
+        pos: pos.clone().add(new T.Vector3(0, 2.8, 0)),
+        life: 1.2,
+      });
+    }
+    function missile(from, to, color) {
+      const mesh = new T.Mesh(
+        new T.OctahedronGeometry(0.17),
+        new T.MeshBasicMaterial({ color }),
+      );
+      scene.add(mesh);
+      mesh.position.copy(from).add(new T.Vector3(0, 1.3, 0));
+      effects.push({
+        mesh,
+        life: 0.45,
+        duration: 0.45,
+        from: mesh.position.clone(),
+        to: to.clone().add(new T.Vector3(0, 1.1, 0)),
+        projectile: true,
+      });
+    }
+    function showTelegraph(e) {
+      const m = e.move;
+      e.ring.geometry.dispose();
+      e.ring.geometry = new T.RingGeometry(
+        m.shape === "ring" ? m.inner : 0.08,
+        m.radius,
+        48,
+        1,
+        m.shape === "cone" ? -Math.PI / 2 - m.arc / 2 : 0,
+        m.shape === "cone" ? m.arc : Math.PI * 2,
+      );
+      e.ring.rotation.set(-Math.PI / 2, 0, e.attackFacing);
+      const pos = m.shape === "mark" ? e.aim : e.attackOrigin;
+      e.ring.position.set(pos.x, terrain(pos.x, pos.z) + 0.12, pos.z);
+    }
     let repeated = "";
     let repeatCount = 0;
     let lastInteract = "";
@@ -723,8 +888,22 @@ export default function World({
         (kind === "heavy" || kind === "charged" ? 0.85 : 0.47) *
         (1 - Math.min(0.18, s.attrs.Dexterity * 0.004));
       attackTime = cooldown;
+      playClip(hero, kind, cooldown);
       lastTime = elapsed;
       burst(hero.position, "#dec491", w.reach);
+      if (
+        hero.position.distanceTo(sealPos) < 4 &&
+        !secretOpen(s) &&
+        ["heavy", "charged"].includes(kind)
+      ) {
+        const opened = unseal(s, kind);
+        if (opened !== s) {
+          patch({ campaign: opened.campaign, events: opened.events });
+          seal.visible = false;
+          burst(sealPos, "#c8d3a1", 4);
+          event("The seal breaks. A hidden road remembers you.", "reward");
+        }
+      }
       const target = nearest();
       if (!target) return;
       const dist = hero.position.distanceTo(target.mesh.position);
@@ -745,45 +924,60 @@ export default function World({
         target.stagger > 0 ? "riposte" : isBack ? "backstab" : kind;
       const range = w.reach + (target.boss ? 1.2 : 0.4);
       const delay = kind === "heavy" || kind === "charged" ? 220 : 120;
-      setTimeout(() => {
-        if (disposed || target.hp <= 0 || handlers.current.paused) return;
-        if (hero.position.distanceTo(target.mesh.position) > range) {
-          event("Your blade finds only ash.");
-          return;
-        }
-        let dmg = damageFor(stateRef.current, actual);
-        if (
-          target.mode === "guard" &&
-          actual !== "heavy" &&
-          actual !== "charged"
-        )
-          dmg = Math.round(dmg * 0.3);
-        if (repeatCount > 3 && target.boss) {
-          dmg = Math.round(dmg * 0.5);
-          target.timer = 0.1;
-          event("The enemy has learned your rhythm.");
-        }
-        target.hp = Math.max(0, target.hp - dmg);
-        burst(target.mesh.position, "#df8b60", 1.4);
-        if (["heavy", "charged", "riposte"].includes(actual)) {
-          target.stagger = 1.4;
-          target.mode = "staggered";
-        }
-        event(
-          `${actual === "riposte" ? "Critical riposte" : actual === "backstab" ? "Backstab" : "Strike"} · ${dmg} damage`,
-          "combat",
-        );
-        if (target.hp === 0) kill(target);
-      }, delay);
+      pending.push({
+        remaining: delay / 1000,
+        run: () => {
+          if (disposed || target.hp <= 0 || stateRef.current.hp <= 0) return;
+          if (hero.position.distanceTo(target.mesh.position) > range) {
+            event("Your blade finds only ash.");
+            return;
+          }
+          let dmg = damageFor(stateRef.current, actual);
+          if (
+            target.mode === "guard" &&
+            actual !== "heavy" &&
+            actual !== "charged"
+          )
+            dmg = Math.round(dmg * 0.3);
+          if (repeatCount > 3 && target.boss) {
+            dmg = Math.round(dmg * 0.5);
+            target.timer = 0.1;
+            event("The enemy has learned your rhythm.");
+          }
+          target.hp = Math.max(0, target.hp - dmg);
+          floating(dmg, target.mesh.position);
+          playClip(target.mesh, "hurt", 0.25);
+          burst(target.mesh.position, "#df8b60", 1.4);
+          if (["heavy", "charged", "riposte"].includes(actual)) {
+            target.poise -=
+              actual === "riposte" ? 110 : actual === "charged" ? 70 : 40;
+            if (target.poise <= 0) {
+              target.stagger = 1.4;
+              target.mode = "staggered";
+              target.poise = target.maxPoise;
+            }
+          }
+          event(
+            `${actual === "riposte" ? "Critical riposte" : actual === "backstab" ? "Backstab" : "Strike"} · ${dmg} damage`,
+            "combat",
+          );
+          if (target.hp === 0) kill(target);
+        },
+      });
     }
     function kill(e) {
-      e.mesh.visible = false;
+      playClip(e.mesh, "death", 2);
       e.ring.visible = false;
+      floating(e.boss ? "GUARDIAN FELLED" : "SOUL RELEASED", e.mesh.position);
       const s = stateRef.current;
       const reward = e.boss ? 450 + s.region * 100 : 40 + s.region * 15;
       const update = {
         essence: s.essence + reward,
         materials: s.materials + (e.boss ? 3 : 1),
+        defeatedCounts: {
+          ...s.defeatedCounts,
+          [e.name]: (s.defeatedCounts?.[e.name] || 0) + 1,
+        },
       };
       if (e.boss) {
         update.bosses = [...s.bosses, s.region];
@@ -809,6 +1003,14 @@ export default function World({
         strike(name);
         return;
       }
+      if (name === "sprint-on") {
+        keys.shift = true;
+        return;
+      }
+      if (name === "sprint-off") {
+        keys.shift = false;
+        return;
+      }
       if (name === "block-on") {
         guard = true;
         return;
@@ -827,6 +1029,7 @@ export default function World({
         const weight = ARMOURS.find((a) => a.name === s.armour)?.weight || 0;
         patch({ stamina: s.stamina - 22 });
         invulnerable = weight > 20 ? 0.3 : 0.46;
+        playClip(hero, "roll", 0.48);
         cooldown = 0.6;
         lastTime = elapsed;
         const len = Math.hypot(input.x, input.z);
@@ -841,6 +1044,7 @@ export default function World({
         if (s.stamina < 18 || cooldown > 0) return;
         patch({ stamina: s.stamina - 18 });
         parry = 0.3;
+        playClip(hero, "parry", 0.4);
         cooldown = 0.55;
         lastTime = elapsed;
         burst(hero.position, "#d9e7f4", 2);
@@ -859,6 +1063,7 @@ export default function World({
           hp: Math.min(max.hp, s.hp + Math.round(max.hp * 0.55)),
           flasks: s.flasks - 1,
         });
+        playClip(hero, "heal", 0.8);
         burst(hero.position, "#e8b755", 2);
         event("Cinder flask · vitality restored.");
         return;
@@ -871,6 +1076,7 @@ export default function World({
         }
         patch({ focus: s.focus - spell.cost });
         cooldown = 0.9;
+        playClip(hero, "cast", 0.9);
         burst(hero.position, "#a1cbd5", 4);
         if (spell.name === "Sacred mending") {
           patch({ hp: Math.min(max.hp, s.hp + 80 + s.attrs.Faith * 3) });
@@ -878,14 +1084,23 @@ export default function World({
         }
         const e = nearest();
         if (e && hero.position.distanceTo(e.mesh.position) < 17) {
+          missile(
+            hero.position,
+            e.mesh.position,
+            spell.type === "Pyromancy" ? "#e7a665" : "#9ccbd4",
+          );
+          const before = e.hp;
           e.hp = Math.max(
             0,
             e.hp -
               Math.round(
                 (spell.damage + s.attrs[spell.scaling] * 2) *
-                  (s.region === 1 && spell.type === "Pyromancy" ? 1.4 : 1),
+                  (s.region === 9 && spell.scaling === "Faith" ? 1.3 : 1) *
+                  (weather.rain && spell.type === "Pyromancy" ? 0.75 : 1),
               ),
           );
+          floating(before - e.hp, e.mesh.position);
+          playClip(e.mesh, "hurt", 0.25);
           e.stagger = spell.type === "Time" ? 3 : 0.5;
           burst(e.mesh.position, "#a1cbd5", 3);
           event(`${spell.name} strikes ${e.name}.`, "combat");
@@ -895,6 +1110,39 @@ export default function World({
       }
       if (name === "interact") {
         const near = getInteraction();
+        if (near.kind === "seal") {
+          const next = unseal(s, gate.kind);
+          if (next !== s) {
+            patch({ campaign: next.campaign, events: next.events });
+            event("A hidden way opens.", "reward");
+            if (gate.kind === "kneel") playClip(hero, "heal", 1.3);
+          } else event(gate.clue);
+          return;
+        }
+        if (near.kind === "pillar") {
+          const next = lightPillar(s, near.id);
+          patch({ campaign: next.campaign });
+          pillars[near.id].crystal.material.color.set("#c8dfb5");
+          event(
+            campaignState(next).pillars.length === 3
+              ? "The three words become a door."
+              : "A crystal pillar answers.",
+            "reward",
+          );
+          return;
+        }
+        if (near.kind === "brazier") {
+          const next = lightBrazier(s, near.id);
+          patch({ campaign: next.campaign });
+          braziers[near.id].fire.visible = true;
+          event(
+            campaignState(next).braziers.length === 3
+              ? "Three lights answer. A hidden cache wakes west of the old road."
+              : "A pilgrim flame is rekindled.",
+            "reward",
+          );
+          return;
+        }
         if (near.kind === "loot") {
           const l = near.loot;
           if (!s.secret.includes(l.id)) {
@@ -928,9 +1176,33 @@ export default function World({
         ) < 3
       )
         return { kind: "recover", text: "Reclaim lost essence" };
+      if (hero.position.distanceTo(memorialPos) < 3)
+        return {
+          kind: "echo",
+          text: campaignState(s).echoes.includes(s.region)
+            ? "Revisit the memorial"
+            : "Read the forgotten memorial",
+        };
+      for (const b of braziers)
+        if (
+          !campaignState(s).braziers.includes(b.id) &&
+          Math.hypot(hero.position.x - b.x, hero.position.z - b.z) < 2.6
+        )
+          return {
+            kind: "brazier",
+            text: "Kindle a pilgrim brazier",
+            id: b.id,
+          };
+      for (const p of pillars)
+        if (
+          !campaignState(s).pillars.includes(p.id) &&
+          Math.hypot(hero.position.x - p.x, hero.position.z - p.z) < 2.6
+        )
+          return { kind: "pillar", id: p.id, text: "Kindle a crystal pillar" };
       for (const l of loot)
         if (
           l.mesh.visible &&
+          !(l.secret && !secretOpen(s)) &&
           Math.hypot(hero.position.x - l.x, hero.position.z - l.z) < 2.8
         )
           return {
@@ -938,9 +1210,15 @@ export default function World({
             text: l.secret ? "Search the hidden cache" : "Gather soul remnant",
             loot: l,
           };
-      if (hero.position.distanceTo(firePos) < 4)
+      if (!secretOpen(s) && hero.position.distanceTo(sealPos) < 4)
+        return { kind: "seal", text: gate.title };
+      const npcDistance = hero.position.distanceTo(npc.position),
+        fireDistance = hero.position.distanceTo(firePos);
+      if (npcDistance < 3.5 && npcDistance < fireDistance)
+        return { kind: "npc", text: `Speak to ${region.npc}` };
+      if (fireDistance < 4)
         return { kind: "sanctuary", text: "Rest at the sanctuary" };
-      if (hero.position.distanceTo(npc.position) < 3.5)
+      if (npcDistance < 3.5)
         return { kind: "npc", text: `Speak to ${region.npc}` };
       if (hero.position.z < -43)
         return { kind: "travel", text: "Follow the road · Open realm map" };
@@ -1033,6 +1311,32 @@ export default function World({
         motes[i * 3] += Math.sin(elapsed + i) * dt * 0.08;
       }
       moteGeo.attributes.position.needsUpdate = true;
+      const liveWeather = weatherAt(
+        stateRef.current || { region: 0, worldDay: 1 },
+      );
+      scene.fog.density = liveWeather.fog;
+      for (let i = 0; i < 120; i++) {
+        const q = i * 3;
+        weatherPositions[q + 1] -=
+          dt * (weather.rain ? 12 : weather.snow ? 0.9 : 0.35);
+        weatherPositions[q] += dt * (weather.snow ? 0.5 : 0.8);
+        if (weatherPositions[q + 1] < 0) weatherPositions[q + 1] = 18;
+        if (weatherPositions[q] > 24) weatherPositions[q] = -24;
+      }
+      weatherGeo.attributes.position.needsUpdate = true;
+      weatherPoints.visible = weather.rain || weather.snow || weather.ash;
+      banners.forEach((b, i) => {
+        const a = b.geometry.attributes.position;
+        for (let j = 0; j < a.count; j++)
+          a.setZ(
+            j,
+            Math.sin(elapsed * 3 + a.getY(j) * 2 + i) *
+              0.14 *
+              (a.getX(j) + 0.5),
+          );
+        a.needsUpdate = true;
+      });
+
       loot.forEach((l) => {
         l.mesh.rotation.y += dt;
         l.mesh.position.y = 0.8 + Math.sin(elapsed * 2 + l.x) * 0.15;
@@ -1040,8 +1344,15 @@ export default function World({
       for (let i = effects.length - 1; i >= 0; i--) {
         const fx = effects[i];
         fx.life -= dt;
-        fx.mesh.scale.setScalar(1 + (1 - fx.life * 2) * fx.size);
-        fx.mesh.material.opacity = fx.life * 2;
+        if (fx.projectile) {
+          fx.mesh.position.lerpVectors(
+            fx.from,
+            fx.to,
+            1 - fx.life / fx.duration,
+          );
+          fx.mesh.rotation.y += dt * 9;
+        } else fx.mesh.scale.setScalar(1 + (1 - fx.life * 2) * fx.size);
+        if (!fx.projectile) fx.mesh.material.opacity = fx.life * 2;
         if (fx.life <= 0) {
           scene.remove(fx.mesh);
           fx.mesh.geometry.dispose();
@@ -1051,6 +1362,50 @@ export default function World({
       }
       const s = stateRef.current;
       const h = handlers.current;
+      for (let i = labels.length - 1; i >= 0; i--) {
+        const label = labels[i];
+        if (!h.paused) label.life -= dt;
+        const v = label.pos.clone();
+        v.y += (1.2 - label.life) * 0.9;
+        v.project(camera);
+        label.node.style.transform = `translate(${(v.x * 0.5 + 0.5) * el.clientWidth}px,${(-v.y * 0.5 + 0.5) * el.clientHeight}px) translate(-50%,-50%)`;
+        label.node.style.opacity =
+          v.z > 1 ? "0" : String(Math.min(1, label.life * 2));
+        if (label.life <= 0) {
+          label.node.remove();
+          labels.splice(i, 1);
+        }
+      }
+
+      if (!h.paused) animateActor(npc, dt, elapsed);
+      if (s && `${s.weapon}:${s.armour}` !== heroEquipment) {
+        const old = hero;
+        hero = createActor({
+          className: s.className,
+          weapon: s.weapon,
+          armour: s.armour,
+          color:
+            s.appearance === "Ember"
+              ? "#a2846d"
+              : s.appearance === "Frost"
+                ? "#91a9b5"
+                : undefined,
+        });
+        hero.position.copy(old.position);
+        hero.rotation.copy(old.rotation);
+        scene.add(hero);
+        scene.remove(old);
+        disposeActor(old);
+        heroEquipment = `${s.weapon}:${s.armour}`;
+      }
+      if (s) {
+        seal.visible = !secretOpen(s);
+        for (const l of loot)
+          if (l.secret) {
+            l.mesh.visible = secretOpen(s) && !s.secret.includes(l.id);
+            l.light.visible = l.mesh.visible;
+          }
+      }
       if (h.paused) blur();
       if (lostSoul) {
         lostSoul.visible = !!s?.dropped;
@@ -1059,12 +1414,20 @@ export default function World({
       if (h.active && !h.paused && s) {
         if (deathTimer > 0) {
           deathTimer -= dt;
+          animateActor(hero, dt, elapsed, { dead: true });
           if (deathTimer <= 0) {
             patch(deathState(s, { x: hero.position.x, z: hero.position.z }));
             h.onInteract("respawn");
           }
           renderer.render(scene, camera);
           return;
+        }
+        for (let i = pending.length - 1; i >= 0; i--) {
+          pending[i].remaining -= dt;
+          if (pending[i].remaining <= 0) {
+            const hit = pending.splice(i, 1)[0];
+            hit.run();
+          }
         }
         cooldown = Math.max(0, cooldown - dt);
         invulnerable = Math.max(0, invulnerable - dt);
@@ -1100,18 +1463,13 @@ export default function World({
           hero.position.z = T.MathUtils.clamp(nz, -48, 22);
         }
         hero.position.y = terrain(hero.position.x, hero.position.z);
-        if (len > 0 || dodge) {
-          if (!locked) hero.rotation.y = Math.atan2(mx, mz);
-          hero.userData.legs.forEach(
-            (leg, i) =>
-              (leg.rotation.x = Math.sin(elapsed * 11 + i * Math.PI) * 0.4),
-          );
-        } else hero.userData.legs.forEach((l) => (l.rotation.x = 0));
-        hero.userData.sword.rotation.z =
-          attackTime > 0 ? Math.sin(attackTime * 8) * 1.4 : guard ? -1 : 0;
-        hero.rotation.z = dodge
-          ? Math.sin((dodge.time / 0.27) * Math.PI) * 0.7
-          : 0;
+        if ((len > 0 || dodge) && !locked) hero.rotation.y = Math.atan2(mx, mz);
+        animateActor(hero, dt, elapsed, {
+          moving: len > 0 ? 1 : 0,
+          sprint,
+          guard,
+        });
+        hero.rotation.z = 0;
         const max = limits(s);
         let stamina = s.stamina;
         if (sprint) {
@@ -1124,15 +1482,52 @@ export default function World({
           );
         let hp = s.hp;
         let focus = s.focus;
+        for (let i = echoHazards.length - 1; i >= 0; i--) {
+          const hazard = echoHazards[i];
+          hazard.time -= dt;
+          hazard.ring.material.opacity = 0.2 + Math.sin(elapsed * 15) * 0.1;
+          if (hazard.time <= 0) {
+            if (
+              hero.position.distanceTo(hazard.center) < hazard.radius &&
+              invulnerable <= 0
+            ) {
+              const dmg = receiveDamage(
+                s,
+                hazard.power * DIFFICULTIES[s.difficulty].damage,
+                guard,
+              );
+              hp = Math.max(0, hp - dmg);
+              floating(`−${dmg}`, hero.position, true);
+              playClip(hero, "hurt", 0.25);
+            }
+            burst(hazard.center, "#b9a6df", hazard.radius);
+            scene.remove(hazard.ring);
+            hazard.ring.geometry.dispose();
+            hazard.ring.material.dispose();
+            echoHazards.splice(i, 1);
+          }
+        }
         for (const e of enemies) {
-          if (e.hp <= 0) continue;
+          if (e.hp <= 0) {
+            e.deadTime += dt;
+            animateActor(e.mesh, dt, elapsed, { dead: true });
+            if (e.deadTime > 2.5) e.mesh.visible = false;
+            continue;
+          }
+          animateActor(e.mesh, dt, elapsed, {
+            moving: e.mode === "chasing" ? 1 : 0,
+            windup: e.mode === "windup",
+            guard: e.mode === "guard",
+            stagger: e.stagger > 0,
+          });
           const dist = e.mesh.position.distanceTo(hero.position);
           e.stagger = Math.max(0, e.stagger - dt);
-          e.ring.position.set(
-            e.mesh.position.x,
-            hero.position.y + 0.08,
-            e.mesh.position.z,
-          );
+          if (!(e.boss && e.mode === "windup"))
+            e.ring.position.set(
+              e.mesh.position.x,
+              hero.position.y + 0.08,
+              e.mesh.position.z,
+            );
           if (e.personality === "caster" && e.mode === "windup" && e.aim) {
             e.ring.position.copy(e.aim);
             e.ring.position.y += 0.1;
@@ -1189,25 +1584,34 @@ export default function World({
             e.mesh.position.addScaledVector(dir, dt * sp);
           }
           e.mesh.position.y = terrain(e.mesh.position.x, e.mesh.position.z);
-          e.mesh.rotation.y = Math.atan2(
-            hero.position.x - e.mesh.position.x,
-            hero.position.z - e.mesh.position.z,
-          );
+          if (e.mode !== "windup" && e.mode !== "recovery")
+            e.mesh.rotation.y = Math.atan2(
+              hero.position.x - e.mesh.position.x,
+              hero.position.z - e.mesh.position.z,
+            );
           e.timer -= dt;
           if (e.mode === "windup") {
             e.ring.material.opacity = 0.25 + Math.sin(elapsed * 15) * 0.12;
             if (e.timer <= 0) {
-              const radius =
-                e.boss && e.phase >= 2
-                  ? 5
-                  : e.personality === "caster"
-                    ? 2
-                    : 3.3;
-              const hit =
-                (e.personality === "caster" && e.aim
-                  ? e.aim
-                  : e.mesh.position
-                ).distanceTo(hero.position) < radius;
+              const radius = e.personality === "caster" ? 2 : 3.3;
+              const hit = e.boss
+                ? attackConnects(
+                    hero.position,
+                    e.move.shape === "mark" ? e.aim : e.attackOrigin,
+                    e.attackFacing,
+                    e.move,
+                  )
+                : (e.personality === "caster" && e.aim
+                    ? e.aim
+                    : e.mesh.position
+                  ).distanceTo(hero.position) < radius;
+              burst(
+                e.boss && e.move.shape === "mark" ? e.aim : e.mesh.position,
+                e.boss ? "#e1a566" : "#b18ebd",
+                e.boss ? e.move.radius : radius,
+              );
+              if (e.personality === "caster")
+                missile(e.mesh.position, e.aim, "#bb9bda");
               if (hit && invulnerable <= 0) {
                 if (parry > 0) {
                   e.stagger = 2.8;
@@ -1217,10 +1621,14 @@ export default function World({
                   const raw = (e.boss ? 45 : 19) + s.region * 3;
                   const dmg = receiveDamage(
                     s,
-                    raw * DIFFICULTIES[s.difficulty].damage,
+                    raw *
+                      DIFFICULTIES[s.difficulty].damage *
+                      (e.boss ? e.move.power : 1),
                     guard && stamina > 0,
                   );
                   hp = Math.max(0, hp - dmg);
+                  floating(`−${dmg}`, hero.position, true);
+                  playClip(hero, "hurt", 0.25);
                   if (guard) {
                     stamina = Math.max(0, stamina - 23);
                     if (stamina === 0) {
@@ -1231,8 +1639,42 @@ export default function World({
                   burst(hero.position, "#bb6652", 1);
                 }
               }
+              if (s.region === 10) {
+                const center = (
+                  e.personality === "caster" && e.aim ? e.aim : e.mesh.position
+                ).clone();
+                const ring = new T.Mesh(
+                  new T.RingGeometry(0.1, e.boss ? 4.6 : 2.5, 36),
+                  new T.MeshBasicMaterial({
+                    color: "#b9a6df",
+                    side: T.DoubleSide,
+                    transparent: true,
+                    opacity: 0.25,
+                  }),
+                );
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.copy(center);
+                ring.position.y += 0.16;
+                scene.add(ring);
+                echoHazards.push({
+                  center,
+                  ring,
+                  time: 1,
+                  radius: e.boss ? 4.6 : 2.5,
+                  power: e.boss ? 32 : 16,
+                });
+                event(
+                  "A memory of the strike lingers. Leave the violet circle.",
+                  "combat",
+                );
+              }
+              playClip(
+                e.mesh,
+                e.personality === "caster" ? "cast" : "heavy",
+                0.7,
+              );
               e.mode = "recovery";
-              e.timer = e.boss ? 0.9 : 1.3;
+              e.timer = e.boss ? e.move.recovery : 1.3;
               e.ring.material.opacity = 0;
             }
           } else if (
@@ -1257,7 +1699,14 @@ export default function World({
                   "combat",
                 );
               }
-              e.ring.scale.setScalar(e.phase >= 2 ? 1.6 : 1);
+              e.move = bossMove(s.region, e.phase, e.turn++);
+              e.timer = e.move.windup;
+              e.attackOrigin = e.mesh.position.clone();
+              e.attackFacing = e.mesh.rotation.y;
+              e.aim = hero.position.clone();
+              e.ring.scale.setScalar(1);
+              showTelegraph(e);
+              event(`${e.name} prepares ${e.move.name}.`, "combat");
             }
           }
           if (locked && e === nearest())
@@ -1266,13 +1715,19 @@ export default function World({
               e.mesh.position.z - hero.position.z,
             );
         }
+        if (s.region === 8 && Math.abs(hero.position.x) > 18)
+          stamina = Math.max(0, stamina - dt * 12);
+        if (s.region === 5 && Math.abs(hero.position.x) > 9)
+          focus = Math.min(max.focus, focus + dt * 2.5);
         if (s.region === 3 && Math.abs(hero.position.x) > 18)
           hp = Math.max(0, hp - dt * 3);
         if (s.region === 6 && hero.position.x > 20)
           hp = Math.max(0, hp - dt * 8);
         if (s.region === 11) focus = Math.max(0, focus - dt * 0.4);
         if (hp <= 0 && deathTimer === 0) {
+          pending.length = 0;
           deathTimer = 2.3;
+          playClip(hero, "death", 3);
           event("YOU DIED · The sanctuary calls you home.", "death");
         }
         const nextTime = (s.time + dt * 0.12) % 24;
@@ -1322,7 +1777,8 @@ export default function World({
                     max: e.max,
                     boss: e.boss,
                     phase: e.phase,
-                    stance: e.mode,
+                    stance:
+                      e.mode === "windup" && e.move ? e.move.name : e.mode,
                     distance: Math.round(
                       hero.position.distanceTo(e.mesh.position),
                     ),
@@ -1330,7 +1786,7 @@ export default function World({
                 : null,
           });
         }
-        const desired = hero.position.clone().add(new T.Vector3(10, 10, 15));
+        const desired = hero.position.clone().add(new T.Vector3(8, 8, 12));
         camera.position.lerp(desired, dt * 2);
         camera.lookAt(
           hero.position.x,
@@ -1370,6 +1826,7 @@ export default function World({
       scene.background?.dispose();
       renderer.dispose();
       renderer.domElement.remove();
+      labels.forEach((l) => l.node.remove());
       actionRef.current = null;
     };
   }, [state?.region, epoch]);

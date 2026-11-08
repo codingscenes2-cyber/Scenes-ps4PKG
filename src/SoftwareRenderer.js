@@ -47,7 +47,9 @@ export class SoftwareRenderer {
     if (scene.background?.image)
       ctx.drawImage(scene.background.image, 0, 0, w, h);
     else {
-      ctx.fillStyle = "#798272";
+      ctx.fillStyle = scene.background?.isColor
+        ? scene.background.getStyle()
+        : "#798272";
       ctx.fillRect(0, 0, w, h);
     }
     const faces = [],
@@ -132,7 +134,16 @@ export class SoftwareRenderer {
             .add(verts[b])
             .add(verts[c])
             .multiplyScalar(1 / 3);
-          tri.push({ a, b, c, normal, center });
+          const colors = geo.attributes.color;
+          const tint =
+            mat.vertexColors && colors
+              ? new T.Color().setRGB(
+                  (colors.getX(a) + colors.getX(b) + colors.getX(c)) / 3,
+                  (colors.getY(a) + colors.getY(b) + colors.getY(c)) / 3,
+                  (colors.getZ(a) + colors.getZ(b) + colors.getZ(c)) / 3,
+                )
+              : null;
+          tri.push({ a, b, c, normal, center, tint });
         }
         cached = { key, verts, tri };
         this.cache.set(m, cached);
@@ -157,7 +168,7 @@ export class SoftwareRenderer {
         let shade = mat.isMeshBasicMaterial
           ? 1
           : 0.52 + Math.max(0, f.normal.dot(light)) * 0.5;
-        const col = mat.color
+        const col = (f.tint || mat.color)
           .clone()
           .multiplyScalar(shade * (scene.userData.lightFactor || 1));
         const fogAlpha =
@@ -207,14 +218,19 @@ export class SoftwareRenderer {
     ctx.globalAlpha = 1;
     for (const m of points) {
       const attr = m.geometry.attributes.position;
-      ctx.fillStyle = "#e6d59a";
+      ctx.fillStyle = m.material.color?.getStyle() || "#e6d59a";
       for (let i = 0; i < attr.count; i++) {
         const p = project(
           new T.Vector3(attr.getX(i), attr.getY(i), attr.getZ(i)),
         );
         if (p.z > 0 && p.z < 1) {
-          ctx.globalAlpha = 0.25 + (i % 4) * 0.12;
-          ctx.fillRect(p.x, p.y, 1.2, 1.2);
+          ctx.globalAlpha = (m.material.opacity || 1) * (0.4 + (i % 4) * 0.16);
+          ctx.fillRect(
+            p.x,
+            p.y,
+            m.userData.rain ? 0.8 : 1.5,
+            m.userData.rain ? 7 : 1.5,
+          );
         }
       }
     }

@@ -1,63 +1,72 @@
 <!-- coderabbit-ai-generated:v1 -->
 
+<!-- coderabbit-ai-generated-section:v1:bd7f7286b12873acfa67e368899a3ec15f8bbb3273272c180bc9708dfc89457f -->
+
 # Soul Land — The Fallen Realm
 
-A playable, single-player dark fantasy browser RPG built with React, Vite, and the MIT-licensed [Three.js engine](https://github.com/mrdoob/three.js).
+A persistent single-player dark fantasy action RPG built with React, Vite, and the MIT-licensed [Three.js engine](https://github.com/mrdoob/three.js).
 
-## Run
+## Play online
 
-Requires Node.js 20.19+ or 22.12+ (verified with Node 24.21.0 and npm 11.19.0).
+[Play Soul Land](https://codingscenes2-cyber.github.io/Scenes-ps4PKG/docs/)
+
+The game is hosted by GitHub Pages and does not depend on this coding sandbox. The repository root redirects to the built game under `docs/`. Once the game finishes downloading, a service worker caches its core files for offline reopening. Progress stays in this browser. Settings → Export journey / Import journey transfers a save between devices or website origins. Import replaces the current browser journey; export first to retain it.
+
+On supported mobile browsers, use the browser’s Add to Home Screen option for a standalone game window. The web manifest and original icon are included. No account or provider API is required.
+
+## Run and publish
+
+Requires Node.js 20.19+ or 22.12+; verified with Node 24.21.0 / npm 11.19.0.
 
 ```sh
 npm ci
 npm run dev -- --port 3000
+npm test
+npm run build:pages
 ```
 
-Open the running Preview. `npm run build` produces `dist/`; deploy it to any static host. `npm test` runs the progression and persistence tests. No provider API, account, or database is required.
+`npm run build` produces `dist/`; `npm run build:pages` produces a portable build under `docs/` using relative URLs. Commit source and the regenerated docs together. GitHub Pages currently serves branch `coderabbit/build-soul-land-rpg/47064c05` from `/`. The source entry redirects GitHub Pages visitors to `/Scenes-ps4PKG/docs/`; the Vite build removes that redirect from the finished game. Vite’s development watcher excludes generated builds.
 
-<!-- coderabbit-ai-generated:v1 -->
+## The witness campaign
 
-<!-- coderabbit-ai-generated-section:v1:b473e08b2961b394795ff95ec29901a3163057962a1586bf15ba512a16a044e2 -->
+Begin with a cinematic prologue, choose one of eight starting classes, customize your wanderer and choose a fixed difficulty. Follow six chapters of testimony across the Ashen Veil, Hollowwood, Crownfall, Nacreth, the Sunless Sea, and the Fractured Throne. Exploration remains open. Chapters require conversations, recovered memorials and guardian victories; testimony rewards can be claimed once, in narrative order. Later chapter conclusions remain hidden until earned.
 
-## Publish to GitHub Pages
+Thirteen regional memorials preserve unreliable accounts of the Fracture. NPCs offer authored dialogue topics, keyword responses and persistent choices. In Crownfall, opening the refuge gate earns an extra flask at sanctuaries; demanding a confession teaches a stronger guard. Earlier choices change the final testimony. The journal records recovered accounts, chapter conclusions, hidden-road clues, personal events and defeated creatures. Seven conditional endings remain available through progression and choices.
 
-<!-- coderabbit-ai-generated:v1 -->
+## Characters and combat
 
-<!-- coderabbit-ai-generated-section:v1:fe9ef79c956d0a4ba12d104e856e31b1d9776d35d39bd50cb1a41ff9b56ce17b -->
+Original articulated models have separate shoulders, elbows, hips, knees, hands, equipment and segmented cloaks. Walking, sprinting, attacks, charging, jumping, casting, healing, blocking, parrying, rolling, hurt and death drive the rig. Regional guardians have bell, antler, crown, wing, crystal, ember, drowned and fractured silhouettes. Character details include a draggable model viewer with animation previews. Equipping gear updates the world model.
 
-Run `npm run build:pages` to regenerate the `docs/` directory for the `/Scenes-ps4PKG/` URL. Commit the updated source and `docs/` together. To enable GitHub Pages, open repository Settings → Pages, choose **Deploy from a branch**, and select `coderabbit/build-soul-land-rpg/47064c05` and `/docs`.
-
-<!-- /coderabbit-ai-generated:v1 -->
-
-## Play
-
-<!-- /coderabbit-ai-generated:v1 -->
-
-Begin with the cinematic prologue and create a wanderer from eight classes. Choose a fixed campaign difficulty. Explore thirteen connected regions, collect soul remnants, speak with the regional inhabitants, and confront each region’s guardian. Map roads allow adjacent exploration; discovered regions allow sanctuary travel. Guardians grant shards and equipment. The final sanctuary responds once seven shards are collected and its guardian is defeated. Choices and exploration affect the available conclusions.
+Boss attacks share their damage geometry with the visible telegraphs: committed directional sweeps, heavy slams, targeted circles and rings with a safe inner area. Later phases add patterns and shorten windups. Poise must be broken before a boss staggers. Enemy casters commit to a target position; shields, retreat, recovery and repeated-attack counters require timing. The Archive leaves delayed, telegraphed echoes of enemy strikes. Floating damage, spell projectiles and an optional original adaptive synthesized score provide feedback.
 
 - **Move:** WASD / arrows. **Sprint:** Shift. **Dodge:** Space. **Backstep:** V.
-- **Light attack:** J. Hold and release J for a charged follow-up. **Heavy:** K. **Jump attack:** X.
+- **Light attack:** J. Hold/release J for a charged follow-up. **Heavy:** K. **Jump attack:** X.
 - **Block:** hold B. **Parry:** F. **Lock target:** Tab. **Weapon skill:** C.
 - **Spell:** R. **Healing flask:** Q. **Interact:** E. **Pause:** Escape.
-- On touch screens, drag the left stick and use the labeled action buttons. Expand the game for more space.
+- **Touch:** drag the left stick (outer edge sprints), use labeled actions, and hold Heavy for over one second for a charged follow-up. Expand the game for more space.
 
-Red circles telegraph attacks. Enemies pursue, guard, retreat, or cast at a committed location. Bosses escalate through three phases. Stamina, focus, weapon reach, armour, stagger and recovery determine combat outcomes. Repeated attacks become less effective against bosses.
+## The world
 
-Rest at sanctuaries to restore resources and establish a checkpoint. Level attributes, upgrade and infuse weapons, attune spells, craft focus restoration, and equip armour. Death drops unspent essence in the current region; a second death replaces that drop. Permanent progression and defeated guardians persist.
+Thirteen connected regional encounter spaces contain regional landmarks, guardians, NPCs and hidden caches. Secrets use three pilgrim braziers, breakable seals, a charged ice wall, crystal pillars, dusk/night visibility, the ferryman’s permission, a silent answer, an empty altar and acts of mercy. NPCs and the journal provide clues. Rain, snow, ash, fog, moving banners, varied terrain shading and the day/night cycle set the atmosphere. Storm days increase fog. Cold slows stamina recovery, deep water drains stamina, marsh pools and lava damage vitality, crystals restore focus, rain weakens pyromancy and temple light strengthens Faith spells.
+
+Rest at sanctuaries to restore resources, establish a checkpoint, level attributes, upgrade/infuse weapons and attune spells. Death drops unspent essence; dying again replaces the unrecovered drop. Permanent progression, defeated guardians, choices, memorials and opened seals persist.
 
 ## Saves and compatibility
 
-Progress is saved in this browser’s localStorage every two seconds and on page exit. Clearing site data removes the campaign. An old save is replaced only after entering the realm with a newly created character. This is a local single-player game; cloud saves and multiplayer are not included.
+LocalStorage autosaves every two seconds and on page exit. Clearing site data removes the journey unless exported. Earlier version-one saves migrate to the new campaign fields without losing progression. A new character replaces the old save only after entering the realm. Cloud saves and multiplayer are not included.
 
-WebGL2 is preferred. A CPU Canvas renderer projects the same Three.js scene when WebGL is unavailable. The fallback was exercised in cloud Chromium with WebGL disabled; GPU rendering and physical phone performance require device testing. Original procedural assets keep downloads small. Mobile pixel ratio is capped; the fallback draws at 30 frames per second at most.
+WebGL2 is preferred. A CPU Canvas renderer projects the same Three.js scene if WebGL is unavailable. Cloud Chromium exercises this fallback; hardware rendering and physical phone performance need device testing. Mobile pixel ratio is capped and the fallback draws at most 30 frames per second.
 
 ## Scope
 
-This is a compact playable interpretation of the requested large RPG, with a full exploration-to-ending progression loop. Regions use generated encounter spaces and distinct environmental props rather than a hand-built AAA open world. NPC speech supports authored keyword responses and persistent choices, not unrestricted AI-generated conversation. Narrative world events advance with time and sanctuary rest; they are authored events rather than independently simulated armies. There are sixteen weapon archetypes, three armour sets, ten spells unlocked through progression, thirteen guardians, and seven conditional conclusions. Free climbing, extensive platforming/fall physics, destructible dungeons, voiced scenes, multiplayer and a full economic simulation are not implemented.
+This is a compact playable RPG with an exploration-to-ending loop. Regions use procedural encounter spaces and original low-poly assets rather than a hand-built AAA open world. NPC conversation is authored, not unrestricted generative dialogue. Time-based world events are authored; independent armies and economies are not simulated. There are sixteen weapon archetypes, three armour sets, ten spells, thirteen guardians and seven conditional conclusions. Free climbing, extensive platforming/fall physics, voiced scenes and multiplayer are not implemented.
 
-## Assets and source
+## Assets and licenses
 
-- Procedural geometry, characters, world map, particles and ambient audio: authored for Soul Land.
+- Procedural world geometry, articulated characters, map, particles, icon, animation and synthesized music: authored for Soul Land.
 - Overlook artwork: *The Abbey in the Oakwood* (1809–1810), Caspar David Friedrich. Public domain. [Wikimedia Commons source and license](https://commons.wikimedia.org/wiki/File:Caspar_David_Friedrich_-_The_Abbey_in_the_Oakwood_-_WGA08240.jpg). Local copy: `public/ashen-veil.jpg`.
-- Three.js: MIT. React: MIT. Lucide icons: ISC. Vite: MIT. Their licenses are distributed with their installed packages.
-- Cinzel and Inter fonts are served by Google Fonts and fall back to local serif/sans-serif fonts when unavailable.
+- Three.js, React and Vite: MIT. Lucide icons: ISC. Package licenses are included with installed dependencies.
+- Cinzel and Inter use Google Fonts with local serif/sans-serif fallbacks when offline.
+
+
+<!-- /coderabbit-ai-generated:v1 -->

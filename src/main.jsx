@@ -49,7 +49,22 @@ import {
   Droplets,
   Save,
 } from "lucide-react";
+import { SoulAudio } from "./audio";
 import World from "./World";
+import { unseal, SECRET_GATES, secretOpen } from "./exploration";
+import CharacterViewer from "./CharacterViewer";
+import {
+  CHAPTERS,
+  ECHOES,
+  NPC_TOPICS,
+  campaignState,
+  currentChapter,
+  chapterObjective,
+  chapterReady,
+  rememberEcho,
+  claimChapter,
+  chapterConclusion,
+} from "./campaign";
 import {
   CLASSES,
   ATTRS,
@@ -58,7 +73,6 @@ import {
   ARMOURS,
   SPELLS,
   DIFFICULTIES,
-  QUESTS,
 } from "./data";
 import {
   createCharacter,
@@ -66,6 +80,7 @@ import {
   saveGame,
   limits,
   levelCost,
+  flaskCount,
   spendLevel,
   SAVE_KEY,
 } from "./state";
@@ -388,8 +403,8 @@ function CharacterCreation({ onCreate, onClose }) {
             </div>
           </div>
           <div className="creation-bottom">
-            <label>
-              Difficulty
+            <div className="creation-option">
+              <span>Difficulty</span>
               <div className="segment">
                 {Object.keys(DIFFICULTIES).map((d) => (
                   <button
@@ -411,9 +426,9 @@ function CharacterCreation({ onCreate, onClose }) {
                       ? "Stronger enemies. Three healing flasks."
                       : "Unforgiving enemies. Two healing flasks."}
               </small>
-            </label>
-            <label>
-              Appearance
+            </div>
+            <div className="creation-option">
+              <span>Appearance</span>
               <div className="segment">
                 {["Ash", "Ember", "Frost"].map((x) => (
                   <button
@@ -426,7 +441,7 @@ function CharacterCreation({ onCreate, onClose }) {
                   </button>
                 ))}
               </div>
-            </label>
+            </div>
           </div>
           <label>
             What remains of your past? <span className="muted">(optional)</span>
@@ -481,7 +496,9 @@ function App() {
     actionRef = useRef(),
     audioRef = useRef(),
     sceneRef = useRef(),
-    stickRef = useRef();
+    stickRef = useRef(),
+    moodRef = useRef();
+  moodRef.current = { region: state?.region || 0, boss: !!target.enemy?.boss };
   useEffect(() => {
     const previous = document.body.style.overflow;
     if (panel || expanded) document.body.style.overflow = "hidden";
@@ -489,13 +506,31 @@ function App() {
       document.body.style.overflow = previous;
     };
   }, [panel, expanded]);
+  useEffect(() => {
+    const visibility = () => {
+      const ctx = audioRef.current?.ctx;
+      if (!ctx) return;
+      if (document.hidden) ctx.suspend().catch(() => {});
+      else ctx.resume().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      document.removeEventListener("visibilitychange", visibility);
+      audioRef.current?.close();
+    };
+  }, []);
   const region = REGIONS[state?.region || 0];
+  const chapter = currentChapter(state);
+  const campaign = campaignState(state);
+  const regionalChapter = CHAPTERS.find((c) => c.region === state?.region);
   const max = state ? limits(state) : { hp: 228, stamina: 112, focus: 90 };
-  const notify = (text, type = "info") =>
+  const notify = (text, type = "info") => {
+    audioRef.current?.cue(type, text);
     setNotices((n) => [
       ...n.slice(-2),
       { text, type, id: Date.now() + Math.random() },
     ]);
+  };
   const update = (next) => {
     const s = typeof next === "function" ? next(stateRef.current) : next;
     stateRef.current = s;
@@ -578,7 +613,7 @@ function App() {
       hp: max.hp,
       stamina: max.stamina,
       focus: max.focus,
-      flasks: DIFFICULTIES[s.difficulty].flasks,
+      flasks: flaskCount(s),
       sanctuary: s.region,
       time: (s.time + 5) % 24,
       worldDay: s.worldDay + 1,
@@ -619,7 +654,7 @@ function App() {
       relics: [...new Set([...s.relics, gained])],
       events: [
         ...s.events.slice(-15),
-        `${region.npc}: ${mercy ? "you offered your aid." : "you claimed the forbidden knowledge."}`,
+        `${region.npc}: ${s.region === 2 ? (mercy ? "the refuge gate was opened. Refugees will send an extra flask to every sanctuary." : "the confession was made. Edrin’s iron guard reduces blocked damage.") : mercy ? "you offered your aid." : "you claimed the forbidden knowledge."}`,
       ],
     });
     setNpcReply("");
@@ -639,20 +674,11 @@ function App() {
     }
     const C = window.AudioContext || window.webkitAudioContext;
     if (!C) return;
-    const ctx = new C();
-    const gain = ctx.createGain();
-    gain.gain.value = 0.025;
-    gain.connect(ctx.destination);
-    [55, 82.41, 110, 164.81].forEach((f, i) => {
-      const o = ctx.createOscillator();
-      o.type = "sine";
-      o.frequency.value = f;
-      const g = ctx.createGain();
-      g.gain.value = 0.5 / (i + 1);
-      o.connect(g).connect(gain);
-      o.start();
-    });
-    audioRef.current = ctx;
+    audioRef.current = new SoulAudio(C, () => ({
+      ...moodRef.current,
+      paused: document.hidden,
+    }));
+    audioRef.current.ctx.resume().catch(() => {});
     setAudio(true);
   };
   const nav = (t) => {
@@ -840,7 +866,7 @@ function App() {
                       {target.enemy.name}
                       <small>
                         {target.enemy.boss
-                          ? `PHASE ${target.enemy.phase}`
+                          ? `PHASE ${target.enemy.phase} · ${target.enemy.stance}`
                           : `${target.enemy.stance} · ${target.enemy.distance}m`}
                       </small>
                     </div>
@@ -875,9 +901,20 @@ function App() {
                     onPointerDown={(e) => {
                       e.currentTarget.setPointerCapture(e.pointerId);
                       const r = e.currentTarget.getBoundingClientRect();
-                      actionRef.current?.move(
-                        (e.clientX - r.left - r.width / 2) / 35,
-                        (e.clientY - r.top - r.height / 2) / 35,
+                      const x = (e.clientX - r.left - r.width / 2) / 35,
+                        z = (e.clientY - r.top - r.height / 2) / 35,
+                        len = Math.max(1, Math.hypot(x, z));
+                      actionRef.current?.move(x / len, z / len);
+                      actionRef.current?.action(
+                        Math.hypot(x, z) > 0.9 ? "sprint-on" : "sprint-off",
+                      );
+                      e.currentTarget.style.setProperty(
+                        "--stick-x",
+                        `${(x / len) * 18}px`,
+                      );
+                      e.currentTarget.style.setProperty(
+                        "--stick-y",
+                        `${(z / len) * 18}px`,
                       );
                     }}
                     onPointerMove={(e) => {
@@ -888,9 +925,30 @@ function App() {
                         z = (e.clientY - r.top - r.height / 2) / 35;
                       const len = Math.max(1, Math.hypot(x, z));
                       actionRef.current?.move(x / len, z / len);
+                      actionRef.current?.action(
+                        Math.hypot(x, z) > 0.9 ? "sprint-on" : "sprint-off",
+                      );
+                      e.currentTarget.style.setProperty(
+                        "--stick-x",
+                        `${(x / len) * 18}px`,
+                      );
+                      e.currentTarget.style.setProperty(
+                        "--stick-y",
+                        `${(z / len) * 18}px`,
+                      );
                     }}
-                    onPointerUp={() => actionRef.current?.move(0, 0)}
-                    onPointerCancel={() => actionRef.current?.move(0, 0)}
+                    onPointerUp={(e) => {
+                      actionRef.current?.move(0, 0);
+                      actionRef.current?.action("sprint-off");
+                      e.currentTarget.style.setProperty("--stick-x", "0px");
+                      e.currentTarget.style.setProperty("--stick-y", "0px");
+                    }}
+                    onPointerCancel={(e) => {
+                      actionRef.current?.move(0, 0);
+                      actionRef.current?.action("sprint-off");
+                      e.currentTarget.style.setProperty("--stick-x", "0px");
+                      e.currentTarget.style.setProperty("--stick-y", "0px");
+                    }}
                   >
                     <Move size={25} />
                   </div>
@@ -908,11 +966,26 @@ function App() {
                         aria-label={l}
                         onPointerDown={(e) => {
                           e.preventDefault();
+                          e.currentTarget.dataset.pressed = String(
+                            performance.now(),
+                          );
                           actionRef.current?.action(a);
+                        }}
+                        onPointerUp={(e) => {
+                          if (
+                            a === "heavy" &&
+                            performance.now() -
+                              Number(e.currentTarget.dataset.pressed) >
+                              1000
+                          )
+                            actionRef.current?.action("charged");
                         }}
                       >
                         <I size={20} />
-                        <span>{l}</span>
+                        <span>
+                          {l}
+                          {a === "heavy" ? " / hold" : ""}
+                        </span>
                       </button>
                     ))}
                     <button
@@ -922,6 +995,9 @@ function App() {
                       }
                       onPointerUp={() => actionRef.current?.action("block-off")}
                       onPointerLeave={() =>
+                        actionRef.current?.action("block-off")
+                      }
+                      onPointerCancel={() =>
                         actionRef.current?.action("block-off")
                       }
                     >
@@ -1057,23 +1133,37 @@ function App() {
               </div>
               <div className="quest-body">
                 <span className="quest-type">
-                  MAIN QUEST <span>01</span>
+                  MAIN QUEST{" "}
+                  <span>
+                    {String(CHAPTERS.indexOf(chapter) + 1).padStart(2, "0")}
+                  </span>
                 </span>
-                <h3>
-                  {state?.choices[0]
-                    ? "Echoes of the Seven"
-                    : "A Bell Without a Voice"}
-                </h3>
+                <h3>{chapter.title}</h3>
                 <p>
-                  {state?.choices[0]
-                    ? "Follow the pilgrim road. Find what keeps the Bellkeeper bound to this world."
+                  {state
+                    ? chapter.intro
                     : "A fading flame. A nameless grave. Someone has been waiting for you."}
                 </p>
                 <div className="quest-objective">
                   <span className="objective-circle" />
-                  {state?.choices[0]
-                    ? "Explore the ruined archway"
-                    : "Find the sanctuary in the Ashen Veil"}
+                  {chapterObjective(state)}
+                </div>
+                <div
+                  className="chapter-dots"
+                  aria-label={`${campaign.claimed.length} of 6 chapters completed`}
+                >
+                  {CHAPTERS.map((c) => (
+                    <i
+                      key={c.region}
+                      className={
+                        campaign.claimed.includes(c.region)
+                          ? "complete"
+                          : chapter.region === c.region
+                            ? "current"
+                            : ""
+                      }
+                    />
+                  ))}
                 </div>
                 <button
                   className="text-button"
@@ -1198,6 +1288,9 @@ function App() {
             <span className="footer-divider" />
             <button onClick={() => open("controls")}>
               Guide & controls <ArrowUpRight size={12} />
+            </button>
+            <button onClick={() => open("settings")}>
+              Settings & saves <Settings size={12} />
             </button>
           </div>
         </footer>
@@ -1445,8 +1538,7 @@ function App() {
                 <Droplets size={36} />
                 <h3>Cinder flask</h3>
                 <p>
-                  {state.flasks} / {DIFFICULTIES[state.difficulty].flasks}{" "}
-                  charges
+                  {state.flasks} / {flaskCount(state)} charges
                 </p>
                 <small>
                   Rest at a sanctuary to replenish. Restore 55% vitality per
@@ -1504,10 +1596,7 @@ function App() {
         >
           <div className="character-layout">
             <div className="character-art">
-              <div className="large-sigil">
-                <Shield size={100} />
-                <Sword size={110} />
-              </div>
+              <CharacterViewer state={state} />
               <p>
                 {state.gender} · {state.appearance}
               </p>
@@ -1583,16 +1672,68 @@ function App() {
         >
           <div className="journal-grid">
             <div>
-              {QUESTS.map((q) => (
-                <article className="journal-quest" key={q.id}>
-                  <div className="eyebrow gold">{REGIONS[q.region].name}</div>
-                  <h3>{q.title}</h3>
-                  <p>{q.desc}</p>
+              {CHAPTERS.filter(
+                (c, i) =>
+                  i <= CHAPTERS.indexOf(chapter) ||
+                  campaign.claimed.includes(c.region),
+              ).map((c) => (
+                <article
+                  className={`journal-quest ${campaign.claimed.includes(c.region) ? "resolved" : ""}`}
+                  key={c.region}
+                >
+                  <div className="eyebrow gold">{c.subtitle}</div>
+                  <h3>{c.title}</h3>
+                  <p>{c.intro}</p>
                   <span className="quest-status">
-                    {state.quests[q.region] || "Unresolved"}
+                    {campaign.claimed.includes(c.region)
+                      ? "Testimony recovered"
+                      : chapterObjective(state, c)}
                   </span>
+                  {campaign.claimed.includes(c.region) && (
+                    <blockquote>{chapterConclusion(state, c)}</blockquote>
+                  )}
                 </article>
               ))}
+              <h3 className="lore-heading">Memories of the Fracture</h3>
+              {campaign.echoes.length ? (
+                campaign.echoes.map((i) => (
+                  <details className="memory-entry" key={i}>
+                    <summary>
+                      {ECHOES[i][0]} <span>{REGIONS[i].name}</span>
+                    </summary>
+                    <p>{ECHOES[i][1]}</p>
+                  </details>
+                ))
+              ) : (
+                <p className="muted">
+                  Read the standing stones beside the pilgrim roads. Their names
+                  survive when histories do not.
+                </p>
+              )}
+              <h3 className="lore-heading">The hidden roads</h3>
+              <p className="muted">
+                Ashen Veil braziers: {campaign.braziers.length} / 3 · Nacreth
+                pillars: {campaign.pillars.length} / 3
+              </p>
+              <p className="muted">{SECRET_GATES[state.region].clue}</p>
+              <span className="quest-status">
+                {secretOpen(state)
+                  ? "A hidden way is open"
+                  : "The seal endures"}
+              </span>
+              <h3 className="lore-heading">Field notes</h3>
+              {Object.entries(state.defeatedCounts || {}).map(
+                ([name, count]) => (
+                  <div className="bestiary-entry" key={name}>
+                    <Skull size={16} />
+                    <span>{name}</span>
+                    <b>{count} felled</b>
+                  </div>
+                ),
+              )}
+              {!Object.keys(state.defeatedCounts || {}).length && (
+                <p className="muted">Your encounters will be recorded here.</p>
+              )}
             </div>
             <div>
               <h3>The world remembers</h3>
@@ -1778,6 +1919,41 @@ function App() {
           )}
         </Modal>
       )}
+      {panel === "echo" && state && (
+        <Modal
+          title={ECHOES[state.region][0]}
+          eyebrow={`A MEMORY IN STONE · ${region.name}`}
+          onClose={() => setPanel(null)}
+        >
+          <div className="echo-sigil">
+            <Eye size={40} />
+          </div>
+          <p className="echo-text">{ECHOES[state.region][1]}</p>
+          <p className="muted">
+            The stone is warm beneath the ash. No voice tells you what to
+            believe.
+          </p>
+          <button
+            className="button primary full"
+            onClick={() => {
+              const next = rememberEcho(stateRef.current, state.region);
+              update(next);
+              setPanel(null);
+              notify(
+                next === state
+                  ? "A familiar memory."
+                  : "Memory inscribed in your journal.",
+                "reward",
+              );
+            }}
+          >
+            <BookOpen size={16} />
+            {campaign.echoes.includes(state.region)
+              ? "Leave the memorial"
+              : "Carry this memory"}
+          </button>
+        </Modal>
+      )}
       {panel === "npc" && state && (
         <Modal
           title={region.npc}
@@ -1793,7 +1969,13 @@ function App() {
               ? state.choices[state.region] === "mercy"
                 ? "I remember your promise. Even if this world forgets, I will not. The road ahead is yours to choose."
                 : "You have what you asked for. Do not mistake knowledge for absolution. We are done here."
-              : region.npcText}
+              : state.region === 11
+                ? state.choices[2] === "mercy"
+                  ? "The refugees still leave a cup beside every fire. They think I cannot see it. You opened one gate, and they have spent every morning opening another."
+                  : state.choices[2] === "knowledge"
+                    ? "I read the confession every morning. There are more names in it now. The gates are still sealed. So am I."
+                    : "I once knew a captain who thought a city needed a king’s permission to die. I have spent nine hundred years trying to forgive him."
+                : region.npcText}
             ”
           </blockquote>
           <p className="muted">
@@ -1821,7 +2003,7 @@ function App() {
               )
                 chooseNPC("knowledge");
               else if (/\b(secret|hidden|passage|road)\b/.test(text))
-                setNpcReply(region.secret);
+                setNpcReply(SECRET_GATES[state.region].clue);
               else if (/\b(history|throne|fracture|past|why|who)\b/.test(text))
                 setNpcReply(region.lore);
               else if (/\b(attack|kill|threaten)\b/.test(text))
@@ -1853,13 +2035,83 @@ function App() {
               </button>
             </div>
           </form>
+          {state.region === 10 && !secretOpen(state) && (
+            <button
+              className="button outline full"
+              onClick={() => {
+                update(unseal(stateRef.current, "silence"));
+                setNpcReply(
+                  "The Unwritten smiles. For the first time, the archive has nothing to add. A passage opens without a sound.",
+                );
+              }}
+            >
+              Remain silent
+            </button>
+          )}
+          <div className="npc-topics">
+            {(
+              NPC_TOPICS[state.region] || [
+                ["This place", region.lore],
+                ["The hidden road", region.secret],
+              ]
+            ).map(([label, text]) => (
+              <button
+                className="topic-button"
+                key={label}
+                onClick={() => setNpcReply(text)}
+              >
+                <Scroll size={13} />
+                {label}
+              </button>
+            ))}
+          </div>
+          {regionalChapter && campaign.claimed.includes(state.region) && (
+            <div className="story-resolution">
+              <span className="eyebrow gold">TESTIMONY RECOVERED</span>
+              <p>{chapterConclusion(state, regionalChapter)}</p>
+            </div>
+          )}
+          {regionalChapter && chapterReady(state, regionalChapter) && (
+            <div className="story-resolution">
+              <h3>The guardian is gone. The memory remains.</h3>
+              <p>{region.npc} has something more to tell you.</p>
+              <button
+                className="button primary full"
+                onClick={() => {
+                  const next = claimChapter(stateRef.current);
+                  if (next === stateRef.current) return;
+                  update(next);
+                  notify(
+                    `Chapter completed · +${regionalChapter.reward} essence · +2 embers`,
+                    "victory",
+                  );
+                }}
+              >
+                Hear the testimony <ArrowRight size={15} />
+              </button>
+            </div>
+          )}
+          {state.region === 2 && !state.choices[2] && (
+            <p className="choice-consequence">
+              Opening the refuge earns one extra flask at every sanctuary.
+              Demanding a confession teaches Edrin’s iron guard, reducing damage
+              received while blocking. Your choice also shapes the final
+              testimony.
+            </p>
+          )}
           {!state.choices[state.region] && (
             <div className="dialogue-choices">
               <button onClick={() => chooseNPC("mercy")}>
-                “I will help you. Tell me what you need.” <Feather size={16} />
+                {state.region === 2
+                  ? "“Open the refuge gate. Help those who can still leave.”"
+                  : "“I will help you. Tell me what you need.”"}{" "}
+                <Feather size={16} />
               </button>
               <button onClick={() => chooseNPC("knowledge")}>
-                “Keep your promises. Give me the truth.” <Eye size={16} />
+                {state.region === 2
+                  ? "“Keep the gates sealed. Tell the living what you did.”"
+                  : "“Keep your promises. Give me the truth.”"}{" "}
+                <Eye size={16} />
               </button>
             </div>
           )}
@@ -2034,6 +2286,13 @@ function App() {
             </button>
             <button
               className="button outline full"
+              onClick={() => setPanel("settings")}
+            >
+              <Settings size={17} />
+              Settings & saves
+            </button>
+            <button
+              className="button outline full"
               onClick={() => setPanel("controls")}
             >
               <BookOpen size={17} /> Guide & controls
@@ -2061,7 +2320,9 @@ function App() {
           <div className="settings-row">
             <div>
               <h3>Realm ambience</h3>
-              <p>A quiet, original ambient drone.</p>
+              <p>
+                An original adaptive score, with combat and discovery sounds.
+              </p>
             </div>
             <button className="button outline" onClick={toggleAudio}>
               {audio ? "On" : "Off"}
@@ -2082,6 +2343,69 @@ function App() {
             </div>
             <Save size={20} />
           </div>
+          <div className="save-tools">
+            {state && (
+              <button
+                className="button outline"
+                onClick={() => {
+                  const data = new Blob(
+                    [JSON.stringify(stateRef.current, null, 2)],
+                    { type: "application/json" },
+                  );
+                  const url = URL.createObjectURL(data);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "soul-land-save.json";
+                  a.click();
+                  setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  notify(
+                    "Journey exported. Keep this file to restore your progress.",
+                    "reward",
+                  );
+                }}
+              >
+                <Save size={15} />
+                Export journey
+              </button>
+            )}
+            <label className="button outline import-save">
+              Import journey
+              <input
+                type="file"
+                accept=".json,application/json"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 1024 * 1024) {
+                    notify("This save file is too large.");
+                    return;
+                  }
+                  try {
+                    const text = await file.text();
+                    const restored = loadSave({ getItem: () => text });
+                    if (!restored) {
+                      notify("This file is not a valid Soul Land save.");
+                      return;
+                    }
+                    update(restored);
+                    saveGame(restored);
+                    setEpoch((x) => x + 1);
+                    setActive(false);
+                    setPanel(null);
+                    setExpanded(false);
+                    notify(`${restored.name}’s journey restored.`, "reward");
+                  } catch {
+                    notify("The save could not be read.");
+                  }
+                }}
+              />
+            </label>
+          </div>
+          <p className="muted">
+            Import replaces this browser’s journey. Export first to keep a
+            backup. Save files can move between the temporary link and the
+            permanent site.
+          </p>
           <button
             className="button outline full"
             onClick={() => setPanel("controls")}
@@ -2121,3 +2445,13 @@ function App() {
   );
 }
 createRoot(document.getElementById("root")).render(<App />);
+
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register(new URL("sw.js", document.baseURI))
+      .catch(() => {
+        /* The game remains playable if caching is unavailable. */
+      });
+  });
+}

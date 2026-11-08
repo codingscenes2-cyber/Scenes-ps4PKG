@@ -11,6 +11,8 @@
       name="description"
       content="Soul Land — The Fallen Realm. A persistent dark fantasy action RPG. Explore thirteen ancient regions, master tactical combat, and decide the fate of the seven Soul Thrones."
     />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/soul-icon.svg" type="image/svg+xml" />
     <title>Soul Land — The Fallen Realm</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,6 +22,15 @@
     />
   </head>
   <body>
+    <!-- source-pages-entry -->
+    <script>
+      if (location.hostname === "codingscenes2-cyber.github.io") {
+        location.replace(
+          "/Scenes-ps4PKG/docs/" + location.search + location.hash,
+        );
+      }
+    </script>
+    <!-- /source-pages-entry -->
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
