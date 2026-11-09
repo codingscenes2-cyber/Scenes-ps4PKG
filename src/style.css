@@ -3371,3 +3371,119 @@ kbd {
     padding: 10px 12px;
   }
 }
+
+/* Progression and testimony use the same restrained brass / charcoal palette. */
+.panel-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.skill-tree {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.skill-node,
+.throne-card {
+  border: 1px solid #61543b66;
+  background: #171b17;
+  padding: 22px;
+  margin: 16px 0;
+}
+.skill-node p,
+.throne-card p {
+  line-height: 1.7;
+  color: #bbbcae;
+}
+.skill-node small,
+.throne-card small {
+  color: #959b8e;
+  display: block;
+  margin: 12px 0;
+}
+.skill-node.learned {
+  border-color: #9cae7b;
+  background: #222a20;
+}
+.throne-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.throne-card h3 {
+  margin: 14px 0;
+}
+.throne-card.resolved {
+  border-color: #a99460;
+}
+.throne-choice {
+  width: 100%;
+  text-align: left;
+  padding: 15px;
+  margin: 8px 0;
+  border: 1px solid #73664977;
+  background: #24271f;
+  color: #ddd5bb;
+  cursor: pointer;
+}
+.throne-choice span {
+  display: block;
+  font-size: 12px;
+  margin-top: 8px;
+  color: #b6baa7;
+}
+.throne-choice:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.flag-debug {
+  margin-top: 20px;
+  border: 1px solid #555b47;
+  padding: 18px;
+}
+.flag-debug pre {
+  font: 12px/1.7 monospace;
+  white-space: pre-wrap;
+  max-height: 380px;
+  overflow: auto;
+  color: #b8c7a6;
+}
+.power-note {
+  border-left: 2px solid #bda676;
+  padding-left: 12px;
+}
+.rarity {
+  font: 10px/2 sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+.rarity-rare {
+  color: #99c4dc;
+}
+.rarity-epic {
+  color: #c3a6de;
+}
+.rarity-legendary {
+  color: #dfba67;
+}
+.recovery-screen {
+  padding: 12vh 8vw;
+  max-width: 850px;
+  margin: auto;
+}
+.recovery-screen a {
+  margin: 16px;
+}
+@media (max-width: 650px) {
+  .skill-tree,
+  .throne-grid {
+    grid-template-columns: 1fr;
+  }
+  .skill-node {
+    margin: 10px 0;
+  }
+  .throne-card {
+    padding: 18px;
+  }
+}

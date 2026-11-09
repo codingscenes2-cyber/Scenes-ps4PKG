@@ -1,0 +1,101 @@
+[
+  {
+    "id": "iron-root",
+    "name": "Iron root",
+    "branch": "Steel",
+    "cost": 120,
+    "requires": [],
+    "effect": {
+      "hp": 24
+    },
+    "description": "Carry another wound before the flame goes out."
+  },
+  {
+    "id": "measured-edge",
+    "name": "Measured edge",
+    "branch": "Steel",
+    "cost": 220,
+    "requires": ["iron-root"],
+    "effect": {
+      "damage": 0.08
+    },
+    "description": "Weapon damage +8%; earned mastery, not a new weapon."
+  },
+  {
+    "id": "last-bastion",
+    "name": "Last bastion",
+    "branch": "Steel",
+    "cost": 380,
+    "requires": ["measured-edge"],
+    "effect": {
+      "defence": 0.06
+    },
+    "description": "Incoming damage -6%."
+  },
+  {
+    "id": "pilgrim-step",
+    "name": "Pilgrim step",
+    "branch": "Veil",
+    "cost": 120,
+    "requires": [],
+    "effect": {
+      "stamina": 10
+    },
+    "description": "Maximum stamina +10."
+  },
+  {
+    "id": "second-breath",
+    "name": "Second breath",
+    "branch": "Veil",
+    "cost": 220,
+    "requires": ["pilgrim-step"],
+    "effect": {
+      "regen": 0.12
+    },
+    "description": "Stamina regeneration +12%."
+  },
+  {
+    "id": "quiet-tide",
+    "name": "Quiet tide",
+    "branch": "Veil",
+    "cost": 380,
+    "requires": ["second-breath"],
+    "effect": {
+      "dodgeCost": -4
+    },
+    "description": "Dodge costs 4 less stamina; invulnerability is unchanged."
+  },
+  {
+    "id": "open-mind",
+    "name": "Open mind",
+    "branch": "Soul",
+    "cost": 120,
+    "requires": [],
+    "effect": {
+      "focus": 15
+    },
+    "description": "Maximum focus +15."
+  },
+  {
+    "id": "deep-well",
+    "name": "Deep well",
+    "branch": "Soul",
+    "cost": 220,
+    "requires": ["open-mind"],
+    "effect": {
+      "focusCost": -0.1
+    },
+    "description": "Offensive spell focus costs -10%."
+  },
+  {
+    "id": "cinder-mercy",
+    "name": "Cinder mercy",
+    "branch": "Soul",
+    "cost": 380,
+    "requires": ["deep-well"],
+    "effect": {
+      "healing": 0.1
+    },
+    "description": "Flasks restore an additional 10% of maximum vitality."
+  }
+]

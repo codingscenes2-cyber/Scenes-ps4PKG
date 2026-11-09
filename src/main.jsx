@@ -49,6 +49,9 @@ import {
   Droplets,
   Save,
 } from "lucide-react";
+import { SkillTree, ThroneArcs } from "./ProgressionPanels";
+import { endingCoda } from "./story";
+import { gearRarity } from "./progression";
 import { encodeSave } from "./saveTransport";
 import { RecoveryBoundary, installErrorLogging } from "./RecoveryBoundary";
 import { SoulAudio } from "./audio";
@@ -1596,6 +1599,20 @@ function App() {
             setTab("World");
           }}
         >
+          <div className="panel-actions">
+            <button
+              className="button outline"
+              onClick={() => setPanel("skills")}
+            >
+              Disciplines & skill tree
+            </button>
+            <button
+              className="button outline"
+              onClick={() => setPanel("thrones")}
+            >
+              The seven Soul Thrones
+            </button>
+          </div>
           <div className="character-layout">
             <div className="character-art">
               <CharacterViewer state={state} />
@@ -1662,6 +1679,26 @@ function App() {
           </div>
         </Modal>
       )}
+      {panel === "skills" && state && (
+        <Modal
+          title="Disciplines of the fallen"
+          eyebrow={`${state.essence} SOUL ESSENCE`}
+          wide
+          onClose={() => setPanel("character")}
+        >
+          <SkillTree state={state} update={update} />
+        </Modal>
+      )}
+      {panel === "thrones" && state && (
+        <Modal
+          title="Seven powers. No ordained answer."
+          eyebrow="THE SOUL THRONES"
+          wide
+          onClose={() => setPanel("journal")}
+        >
+          <ThroneArcs state={state} update={update} />
+        </Modal>
+      )}
       {panel === "journal" && state && (
         <Modal
           title="Threads of a broken world"
@@ -1672,6 +1709,12 @@ function App() {
             setTab("World");
           }}
         >
+          <button
+            className="button outline full"
+            onClick={() => setPanel("thrones")}
+          >
+            The seven Soul Thrones · fates & powers
+          </button>
           <div className="journal-grid">
             <div>
               {CHAPTERS.filter(
@@ -2139,7 +2182,8 @@ function App() {
                   : "The thrones answer your choice. Far below, a child wakes to a sky that has never existed before. The age you chose has begun."}
               </p>
               <p className="muted">
-                Your journey remains yours. The realm is still open.
+                {endingCoda(state)} Your journey remains yours. The realm is
+                still open.
               </p>
               <button className="button primary" onClick={() => setPanel(null)}>
                 Return to the realm

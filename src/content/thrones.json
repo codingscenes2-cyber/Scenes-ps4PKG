@@ -1,0 +1,205 @@
+[
+  {
+    "id": "life",
+    "name": "Life",
+    "region": 1,
+    "title": "The Cradle Beneath the Roots",
+    "question": "The Widow kept a cradle alive after its child had become the forest. The roots still ask whose life was worth the others.",
+    "power": "Verdant pulse",
+    "powerDescription": "Sanctuaries restore an additional 24 maximum vitality.",
+    "choices": [
+      {
+        "id": "restore",
+        "label": "Return the cradle",
+        "consequence": "Bind the forest to a season of birth and winter.",
+        "epilogue": "The roots loosen their hold on the graves. The child asks for a name, not a crown."
+      },
+      {
+        "id": "free",
+        "label": "Let the forest choose",
+        "consequence": "Release the borrowed lives into their own keeping.",
+        "epilogue": "A thousand leaves fall upward. Beyond the road, the first wild sapling grows without a human face."
+      },
+      {
+        "id": "claim",
+        "label": "Keep the beating seed",
+        "consequence": "Carry the life that could have renewed the forest.",
+        "epilogue": "The cradle empties. Its heartbeat follows your footsteps; the Widow no longer answers the wind."
+      }
+    ]
+  },
+  {
+    "id": "death",
+    "name": "Death",
+    "region": 3,
+    "title": "The Saint Who Would Not Bury",
+    "question": "Mara ferried the same funeral for nine centuries. The Saint called this mercy; the dead called it waiting.",
+    "power": "Last vigil",
+    "powerDescription": "Incoming damage is reduced by 4%.",
+    "choices": [
+      {
+        "id": "restore",
+        "label": "Give the dead a shore",
+        "consequence": "Restore a boundary between living and dead.",
+        "epilogue": "For the first time, the ferry returns empty. Mara sets a place at her table for someone who will never arrive."
+      },
+      {
+        "id": "free",
+        "label": "Burn the passenger lists",
+        "consequence": "Let every soul decide when to depart.",
+        "epilogue": "Names rise from the water in different directions. Mara keeps the oar, but throws away the toll box."
+      },
+      {
+        "id": "claim",
+        "label": "Command the last crossing",
+        "consequence": "Become the keeper of every final journey.",
+        "epilogue": "The ferry kneels in its berth. The dead will need your permission to leave."
+      }
+    ]
+  },
+  {
+    "id": "time",
+    "name": "Time",
+    "region": 7,
+    "title": "The Hour That Refused to End",
+    "question": "The Glass Pilgrim walked the desert to postpone an execution. Each horizon was another stolen minute.",
+    "power": "Borrowed breath",
+    "powerDescription": "Stamina regeneration increases by 8%.",
+    "choices": [
+      {
+        "id": "restore",
+        "label": "Start the buried clock",
+        "consequence": "Allow the abandoned hour to finish.",
+        "epilogue": "The desert shadows move. Somewhere, a prisoner hears the door open nine centuries too late."
+      },
+      {
+        "id": "free",
+        "label": "Break the clock face",
+        "consequence": "Release the desert from a single ordained future.",
+        "epilogue": "Every dune casts two shadows, then one. None point toward the road behind you."
+      },
+      {
+        "id": "claim",
+        "label": "Keep the final minute",
+        "consequence": "Take the hour no one else was permitted to spend.",
+        "epilogue": "A grain of glass stops beside your hand. Every clock you pass loses a beat."
+      }
+    ]
+  },
+  {
+    "id": "flame",
+    "name": "Flame",
+    "region": 6,
+    "title": "The Furnace of Unsaid Names",
+    "question": "Veyr burned the records of every person his city sacrificed. The furnace learned to speak them back.",
+    "power": "Cinder edge",
+    "powerDescription": "Weapon damage increases by 4%.",
+    "choices": [
+      {
+        "id": "restore",
+        "label": "Relight the communal hearth",
+        "consequence": "Make flame answer hunger before ambition.",
+        "epilogue": "The furnace becomes a thousand small fires. The ash merchant finally opens his winter stores."
+      },
+      {
+        "id": "free",
+        "label": "Give fire its own name",
+        "consequence": "Let flame exist without an owner.",
+        "epilogue": "The fire leaves the weapons and settles in the stones. It warms nothing by command again."
+      },
+      {
+        "id": "claim",
+        "label": "Wear the furnace heart",
+        "consequence": "Take the fire that once sustained an empire.",
+        "epilogue": "Veyr\u2019s final breath lights your shadow. The cold reaches the houses before the smoke clears."
+      }
+    ]
+  },
+  {
+    "id": "void",
+    "name": "Void",
+    "region": 11,
+    "title": "The Regent Without a Sky",
+    "question": "The Regent hid a city inside the shadow of a dead sun. Every eclipse kept it safe and erased another street.",
+    "power": "Hollow guard",
+    "powerDescription": "Incoming damage is reduced by 4%.",
+    "choices": [
+      {
+        "id": "restore",
+        "label": "Open the eclipse gates",
+        "consequence": "Restore the boundary that keeps absence outside.",
+        "epilogue": "Morning finds a city with no roofs. The surviving streets remember the people they sheltered."
+      },
+      {
+        "id": "free",
+        "label": "Let the shadow go",
+        "consequence": "Allow the hidden city to return on its own terms.",
+        "epilogue": "Doors open onto unfamiliar hills. The Regent\u2019s people leave without asking which kingdom owns them."
+      },
+      {
+        "id": "claim",
+        "label": "Keep the city between worlds",
+        "consequence": "Rule a refuge no daylight can reach.",
+        "epilogue": "One last window closes. Its light remains beneath your skin."
+      }
+    ]
+  },
+  {
+    "id": "memory",
+    "name": "Memory",
+    "region": 10,
+    "title": "The Unwritten Witness",
+    "question": "Your First Shadow carries the account removed from every archive. It remembers a consent the prophecy never sought.",
+    "power": "Unwritten reserve",
+    "powerDescription": "Maximum focus increases by 15.",
+    "choices": [
+      {
+        "id": "restore",
+        "label": "Return the missing pages",
+        "consequence": "Let the archive preserve every contradictory account.",
+        "epilogue": "The shelves fill with witnesses who disagree. The Unwritten smiles at the first honest history."
+      },
+      {
+        "id": "free",
+        "label": "Give the memories back",
+        "consequence": "Let their owners decide what deserves remembering.",
+        "epilogue": "Books open into voices. Some thank you; some ask why you waited."
+      },
+      {
+        "id": "claim",
+        "label": "Become the only witness",
+        "consequence": "Carry the account no one else may read.",
+        "epilogue": "The archive goes quiet. Every unwritten sentence now begins with your name."
+      }
+    ]
+  },
+  {
+    "id": "creation",
+    "name": "Creation",
+    "region": 12,
+    "title": "The Empty Chair",
+    "question": "The Last Witness wrote a prophecy to make a willing jailer. Creation was not destroyed: its right to refuse was.",
+    "power": "Unmade potential",
+    "powerDescription": "Maximum focus and stamina each increase by 10.",
+    "choices": [
+      {
+        "id": "restore",
+        "label": "Rebuild the chair with an empty seat",
+        "consequence": "Make creation a duty no ruler can inherit.",
+        "epilogue": "Seven seats circle an eighth space. The Witness cannot predict what will fill it."
+      },
+      {
+        "id": "free",
+        "label": "Leave the first question unanswered",
+        "consequence": "Refuse to turn possibility into another law.",
+        "epilogue": "The fracture remains, but light passes through it. For the first time, nothing asks to be completed."
+      },
+      {
+        "id": "claim",
+        "label": "Write the next beginning",
+        "consequence": "Accept authorship and its unpayable debt.",
+        "epilogue": "The first word waits. Somewhere beyond the page, someone has already begun to disagree."
+      }
+    ]
+  }
+]

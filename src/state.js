@@ -7,13 +7,15 @@ import {
   REGIONS,
 } from "./data.js";
 import { campaignState } from "./campaign.js";
+import { storyState } from "./story.js";
+import { bonuses, knownSkills } from "./progression.js";
 import { encodeSave, decodeSave } from "./saveTransport.js";
 export const SAVE_KEY = "soul-land-save-v1";
 export const softCap = (v) => (v <= 30 ? v : 30 + (v - 30) * 0.45);
 export const limits = (s) => ({
-  hp: 100 + softCap(s.attrs.Vigor) * 8,
-  stamina: 70 + softCap(s.attrs.Endurance) * 3,
-  focus: 45 + softCap(s.attrs.Mind) * 5,
+  hp: 100 + softCap(s.attrs.Vigor) * 8 + bonuses(s).hp,
+  stamina: 70 + softCap(s.attrs.Endurance) * 3 + bonuses(s).stamina,
+  focus: 45 + softCap(s.attrs.Mind) * 5 + bonuses(s).focus,
 });
 export const flaskCount = (s) =>
   DIFFICULTIES[s.difficulty].flasks + (s.choices?.[2] === "mercy" ? 1 : 0);
@@ -22,6 +24,8 @@ export function createCharacter(c) {
   const cl = CLASSES.find((x) => x.name === c.className) || CLASSES[0];
   const s = {
     version: 1,
+    story: storyState(null),
+    skills: [],
     campaign: campaignState(null),
     defeatedCounts: {},
     name: c.name?.trim().slice(0, 24) || "The Unnamed",
@@ -132,6 +136,8 @@ export function validateSave(s) {
     return {
       ...s,
       campaign: campaignState(s),
+      story: storyState(s),
+      skills: knownSkills(s),
       defeatedCounts: Object.fromEntries(
         Object.entries(
           s.defeatedCounts && typeof s.defeatedCounts === "object"
@@ -190,6 +196,7 @@ export function damageFor(s, kind = "light") {
   let dmg = (w.damage + scale * 0.9) * (1 + s.upgrade * 0.15);
   return Math.round(
     dmg *
+      (1 + bonuses(s).damage) *
       ({
         light: 1,
         heavy: 1.8,
@@ -211,6 +218,7 @@ export function receiveDamage(s, raw, blocking = false) {
     Math.round(
       raw *
         (1 - armour.defence - resist) *
+        (1 - bonuses(s).defence) *
         (blocking ? (s.choices?.[2] === "knowledge" ? 0.2 : 0.25) : 1),
     ),
   );
