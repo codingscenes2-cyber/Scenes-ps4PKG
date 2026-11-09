@@ -77,6 +77,8 @@ test("priority behavior tree never cancels committed telegraphs or recovery to c
   assert.equal(enemyBehavior(e, 2, 50), "windup");
   assert.equal(enemyBehavior({ ...e, mode: "recovery" }, 2, 50), "recovery");
   assert.equal(enemyBehavior({ ...e, mode: "idle" }, 2, 50), "return");
+  assert.equal(enemyBehavior({ ...e, mode: "returning" }, 20, 8), "return");
+  assert.equal(enemyBehavior({ ...e, mode: "returning" }, 20, 0.5), "reset");
   assert.equal(enemyBehavior({ ...e, mode: "idle" }, 2, 0), "retreat");
   assert.equal(
     enemyBehavior(

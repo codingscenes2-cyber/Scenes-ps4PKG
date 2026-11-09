@@ -113,9 +113,10 @@ export default function SettingsPanel({ preferences: p, onChange }) {
       <p className="muted">
         Left stick: move · L3: sprint · A: dodge · B: backstep · X/Y:
         light/heavy · LB: guard · RB: skill · LT: parry · RT: spell · R3: lock ·
-        D-pad up/down: heal/interact · View: jump · Menu: pause. Use the
-        keyboard, touch or mouse in menus. Press a controller button once to
-        connect.
+        D-pad up/down: heal/interact · View: jump · Menu: pause. Hold X, then
+        release for a charged follow-up. In menus, stick or D-pad up/down moves
+        focus, A selects and B returns. Use keyboard or touch for text entry.
+        Press a controller button once to connect.
       </p>
       <a
         className="text-button"

@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="generator" content="CodeRabbit AI generated" />
+    <meta name="theme-color" content="#111a15" />
+    <title>Soul Land · Wanderer’s field guide</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font:
+          16px/1.8 system-ui,
+          sans-serif;
+        color: #cbd0bd;
+        background: #111a15;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+      }
+      header,
+      main,
+      footer {
+        max-width: 1100px;
+        margin: auto;
+        padding: 30px;
+      }
+      header {
+        padding-top: 70px;
+      }
+      a {
+        color: #e0c487;
+        text-underline-offset: 5px;
+      }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 22px;
+        border-block: 1px solid #546044;
+        padding: 20px 0;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: Georgia, serif;
+        color: #eee4c7;
+        font-weight: 400;
+        line-height: 1.25;
+      }
+      h1 {
+        font-size: clamp(42px, 7vw, 76px);
+        margin: 12px 0;
+      }
+      h2 {
+        font-size: 32px;
+        margin-top: 60px;
+      }
+      h3 {
+        font-size: 23px;
+      }
+      small,
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #c4ab73;
+      }
+      .intro {
+        max-width: 740px;
+        font-size: 19px;
+      }
+      .play {
+        display: inline-block;
+        border: 1px solid #ba9d62;
+        padding: 12px 25px;
+        text-decoration: none;
+        margin: 20px 0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 22px;
+      }
+      .card {
+        background: #1b261d;
+        border: 1px solid #4c5840;
+        padding: 25px;
+      }
+      .card p {
+        margin-bottom: 0;
+      }
+      li {
+        margin: 9px 0;
+      }
+      kbd,
+      code {
+        background: #283323;
+        color: #e1c88b;
+        padding: 3px 7px;
+        font-size: 13px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 14px;
+      }
+      td,
+      th {
+        text-align: left;
+        padding: 12px;
+        border-bottom: 1px solid #45543b;
+      }
+      th {
+        color: #e4d4ad;
+      }
+      img {
+        width: 100%;
+        height: auto;
+        border: 1px solid #586344;
+      }
+      figure {
+        margin: 25px 0;
+      }
+      figcaption {
+        font-size: 13px;
+        color: #a8b49a;
+      }
+      .note {
+        border-left: 3px solid #b99a60;
+        padding: 10px 22px;
+        background: #20291d;
+      }
+      details {
+        padding: 20px;
+        border: 1px solid #49583d;
+        margin: 15px 0;
+      }
+      summary {
+        cursor: pointer;
+        color: #ddc58f;
+      }
+      footer {
+        border-top: 1px solid #445039;
+        font-size: 13px;
+      }
+      section {
+        scroll-margin-top: 20px;
+      }
+      @media (max-width: 650px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        header,
+        main,
+        footer {
+          padding: 20px;
+        }
+        header {
+          padding-top: 40px;
+        }
+        td,
+        th {
+          padding: 9px;
+        }
+        table {
+          font-size: 12px;
+        }
+      }
+      @media print {
+        nav,
+        .play {
+          display: none;
+        }
+        :root {
+          color: #111;
+          background: white;
+        }
+        h1,
+        h2,
+        h3 {
+          color: #111;
+        }
+        .card,
+        .note {
+          background: white;
+          color: #111;
+        }
+        a {
+          color: #222;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="eyebrow">Soul Land · The Fallen Realm</span>
+      <h1>The wanderer’s<br />field guide.</h1>
+      <p class="intro">
+        Seven thrones. Thirteen ancient roads. The prophecy asks for a ruler;
+        the witnesses ask you to listen.
+      </p>
+      <a class="play" href="./">Enter the fallen realm ↗</a>
+      <nav>
+        <a href="#features">Features</a><a href="#controls">Controls</a
+        ><a href="#progress">Progression</a
+        ><a href="#offline">Offline & saves</a><a href="#changes">Changelog</a
+        ><a href="#roadmap">Roadmap</a><a href="#licenses">Licenses</a>
+      </nav>
+    </header>
+    <main>
+      <section id="features">
+        <small>The realm today</small>
+        <h2>A journey with consequences.</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Thirteen connected regions</h3>
+            <p>
+              Haunted forest, fallen capital, wetland, glacier, crystal
+              undercity, volcano, glass desert, underground ocean, sacred ruins,
+              living archive, eclipse fortress and the fractured seat. Discover
+              roads, unlock sanctuary travel, read memorials and find hidden
+              caches.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Tactical action combat</h3>
+            <p>
+              Read committed telegraphs, manage stamina, roll through danger,
+              guard, parry and riposte. Heavy attacks break poise; guard
+              counters reward timing. Inputs buffer briefly during recovery;
+              dodge cancels open after an attack’s active hit.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Seven Soul Throne arcs</h3>
+            <p>
+              Defeat a throne guardian, recover its memorial and answer its
+              witness. Return to its region to resolve its fate in Journal →
+              Soul Thrones. Three irreversible choices per throne change
+              testimony and the final age. Sealed revelations stay hidden.
+            </p>
+          </article>
+          <article class="card">
+            <h3>A persistent wanderer</h3>
+            <p>
+              Eight starting classes, eight attributes, nine skill disciplines,
+              sixteen weapon archetypes, forging, infusions, ten spells, four
+              fixed difficulties, six testimony chapters and seven conditional
+              conclusions. Earned progression survives death.
+            </p>
+          </article>
+        </div>
+        <p class="note">
+          This is a compact procedural single-player RPG. Each region is an
+          encounter space with its own roster and rules; it is not a seamless
+          commercial-scale world. Dialogue is authored. No account is required.
+        </p>
+        <figure>
+          <img
+            src="screenshots/realm.jpg"
+            alt="The Ashen Veil with articulated characters, vitality HUD and the regional map"
+            loading="lazy"
+          />
+          <figcaption>
+            Canvas fallback at desktop size. Screenshots show a synthetic test
+            journey; gameplay and interfaces are real.
+          </figcaption>
+        </figure>
+        <div class="grid">
+          <figure>
+            <img
+              src="screenshots/disciplines.jpg"
+              alt="Steel, Veil and Soul discipline branches with costs and prerequisites"
+              loading="lazy"
+            />
+            <figcaption>Permanent skills cost earned soul essence.</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="screenshots/mobile.jpg"
+              alt="Phone layout of Soul Land with touch controls"
+              loading="lazy"
+            />
+            <figcaption>
+              Responsive touch layout. Physical phone performance still requires
+              testing.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+      <section id="controls">
+        <small>Learn the rhythm</small>
+        <h2>Control your own fate.</h2>
+        <p>
+          Defaults are listed below. Settings lets you rebind every gameplay
+          key; HUD hints update to match. Escape pauses. Dialogs support
+          keyboard focus navigation.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Keyboard</th>
+              <th>Standard controller</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Move / sprint</td>
+              <td>WASD or arrows / Shift</td>
+              <td>Left stick / L3</td>
+            </tr>
+            <tr>
+              <td>Light / heavy attack</td>
+              <td>J / K</td>
+              <td>X / Y</td>
+            </tr>
+            <tr>
+              <td>Charged follow-up</td>
+              <td>Hold J, then release</td>
+              <td>Hold X, then release</td>
+            </tr>
+            <tr>
+              <td>Dodge / backstep</td>
+              <td>Space / V</td>
+              <td>A / B</td>
+            </tr>
+            <tr>
+              <td>Guard / parry</td>
+              <td>Hold B / F</td>
+              <td>LB / LT</td>
+            </tr>
+            <tr>
+              <td>Weapon skill / spell</td>
+              <td>C / R</td>
+              <td>RB / RT</td>
+            </tr>
+            <tr>
+              <td>Jump attack / lock</td>
+              <td>X / Tab</td>
+              <td>View / R3</td>
+            </tr>
+            <tr>
+              <td>Heal / interact</td>
+              <td>Q / E</td>
+              <td>D-pad up / down</td>
+            </tr>
+            <tr>
+              <td>Pause</td>
+              <td>Escape</td>
+              <td>Menu</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          <strong>Phone:</strong> drag the left stick; its outer edge sprints.
+          Use the right action buttons and tap the interaction prompt. Hold
+          Heavy for a charged follow-up. Expand the game to use the screen.
+        </p>
+        <p>
+          <strong>Controller menus:</strong> stick or D-pad up/down moves focus,
+          A selects and B returns. Text entry uses keyboard or touch. The
+          browser may require one controller button press before detection.
+        </p>
+        <details>
+          <summary>Combat openings and fairness</summary>
+          <ul>
+            <li>
+              Attacks resolve after startup. Range and facing matter; a missed
+              swing still costs stamina.
+            </li>
+            <li>
+              Inputs are buffered for 0.2 seconds. Dodges can cancel only the
+              last 28% of attack recovery, after its hit has resolved.
+            </li>
+            <li>
+              Light armour rolls have 0.46 seconds of invulnerability; heavy
+              armour has 0.30. Recovery is 0.60 seconds. These values never
+              change with difficulty.
+            </li>
+            <li>
+              Watch an enemy’s red, amber or magenta telegraph. Cones have a
+              safe rear, rings a safe center, marks commit to your former
+              position.
+            </li>
+            <li>
+              A successful block opens a short guard counter. Repeated attacks
+              can meet resistance, but never shorten a committed enemy windup.
+            </li>
+            <li>
+              Throne signatures can drain focus, seal flasks briefly, slow
+              movement, feed roots or leave a second visible hazard. Their
+              captions and HUD status explain the opening.
+            </li>
+          </ul>
+        </details>
+      </section>
+      <section id="progress">
+        <small>Steel · Veil · Soul</small>
+        <h2>Power has a history.</h2>
+        <p>
+          Character → Disciplines opens three branches. Each root costs 120
+          essence, its next node 220 and its capstone 380. Skills survive death;
+          increased reserves fill through rest or regeneration. Skill
+          prerequisites and costs are enforced by the same pure rules used in
+          tests.
+        </p>
+        <p>
+          Throne powers are earned after the guardian, memorial and witness. All
+          three fates grant the same combat gift so narrative choices remain
+          yours. The fate changes its epilogue, the final age’s coda, and—when
+          boundaries are restored—the realm’s light and fog. Existing NPC
+          consequences, including Crownfall’s extra flask or stronger guard,
+          remain active.
+        </p>
+        <p>
+          Rarity describes a weapon’s origin, not hidden bonus damage.
+          Attributes, requirements, upgrades and infusions determine
+          performance. The deterministic balance model covers 128
+          class/difficulty/level combinations, limits combined skill/throne
+          damage and defence bonuses, and reports stamina and hit-count budgets.
+          It does not replace player testing.
+        </p>
+        <p>
+          Content editors: <code>src/content/core.json</code> contains classes,
+          equipment, spells, region lore and roads;
+          <code>campaign.json</code> testimony and dialogue;
+          <code>regions.json</code> rosters, hazards, lighting, music and
+          signatures; <code>thrones.json</code> choices;
+          <code>skills.json</code> the skill graph;
+          <code>combat.json</code> timing. Preserve region indices and save
+          identifiers when extending an existing journey.
+        </p>
+      </section>
+      <section id="offline">
+        <small>The ember endures</small>
+        <h2>Play after the sandbox sleeps.</h2>
+        <p>
+          The game is hosted on GitHub Pages, independently of this development
+          sandbox. Open the game online once and wait until Settings → Local
+          save says <strong>Offline ready</strong>. Its service worker caches
+          the game, lazy engine chunks, artwork, this guide and screenshots.
+          Then reopen the same address without a connection. Supported mobile
+          browsers can Add to Home Screen.
+        </p>
+        <p>
+          Autosave runs every two seconds and on page exit. Format-2 files
+          contain a schema-1 character, timestamp and corruption checksum.
+          Existing raw version-1 saves are accepted. If the primary snapshot
+          fails validation, the last good copy loads. Settings reports recovery.
+          Export a journey before clearing site data or changing devices.
+          Private browsing and storage quotas can prevent persistence.
+        </p>
+        <p class="note">
+          Death drops unspent essence at the fall location. A second death
+          replaces the unrecovered drop. Levels, equipment, discoveries,
+          decisions and defeated guardians persist. Difficulty stays fixed for
+          that journey.
+        </p>
+        <p>
+          Export / Import in Settings transfers progress between browsers or
+          origins. Import replaces the current local journey. The transport can
+          support a future authenticated sync adapter; cloud synchronization is
+          not implemented.
+        </p>
+      </section>
+      <section id="changes">
+        <small>Systems update · November 2026</small>
+        <h2>Changelog.</h2>
+        <ol>
+          <li>
+            <strong>Recoverable journeys:</strong> format-2 checksummed saves,
+            last-good backup, legacy migration, bounded error log, recovery
+            screen and CI.
+          </li>
+          <li>
+            <strong>Thrones and disciplines:</strong> seven independent arcs,
+            twenty-one consequences, earned powers, nine-node skill tree, rarity
+            labels, read-only story flags and balance simulation.
+          </li>
+          <li>
+            <strong>Combat and regions:</strong> hit-stop, expiring input
+            buffer, end-recovery dodge cancel, directional hits/dodges, stable
+            target camera, guard counters, spell startup, regional enemy
+            rosters, priority AI, arena leashes and seven signature mechanics.
+          </li>
+          <li>
+            <strong>Controls and atmosphere:</strong> rebinding, standard
+            controller gameplay and menu navigation,
+            contrast/color-vision/motion settings, brightness, audio buses,
+            positional effects, region scores and optional high-preset bloom.
+          </li>
+          <li>
+            <strong>Rendering and delivery:</strong> bounded ring pool, early
+            Canvas culling, reduced fallback ground detail, scene loading
+            feedback, lazy code, scoped offline cache and this field guide.
+          </li>
+        </ol>
+        <p>
+          Validation: 49 automated checks, targeted browser scenarios and
+          production offline checks. Canvas gameplay baseline: median 66.8 ms /
+          p95 83.5 ms; first upgraded sample: median 66.7 ms / p95 83.5 ms. Mean
+          improved modestly in that sample. No hardware frame-rate guarantee is
+          claimed.
+        </p>
+      </section>
+      <section id="roadmap">
+        <small>What comes next</small>
+        <h2>More roads worth walking.</h2>
+        <ul>
+          <li>
+            Physical Android/iOS and controller testing, GPU bloom verification
+            and measured device quality presets.
+          </li>
+          <li>
+            Full campaign playthroughs across difficulties and iterative
+            boss/loot tuning from player results.
+          </li>
+          <li>
+            More hand-authored spaces, faction schedules, optional encounters,
+            armour sets and voiced testimony.
+          </li>
+          <li>
+            Authenticated cloud sync with conflict resolution; settings and
+            transport are prepared, but no provider is connected.
+          </li>
+          <li>
+            Expanded animation blending, accessibility playtesting and broader
+            controller text-entry support.
+          </li>
+        </ul>
+        <p>
+          <a
+            href="https://github.com/codingscenes2-cyber/Scenes-ps4PKG/blob/coderabbit/build-soul-land-rpg/47064c05/project-docs/AUDIT.md"
+            >Read the full pre-change audit and system test plan ↗</a
+          >
+        </p>
+      </section>
+      <section id="licenses">
+        <small>Tools & credits</small>
+        <h2>Open foundations.</h2>
+        <ul>
+          <li>
+            <a href="https://github.com/mrdoob/three.js"
+              >Three.js and its post-processing modules</a
+            >: MIT. <a href="https://github.com/facebook/react">React</a>: MIT.
+            <a href="https://github.com/vitejs/vite">Vite</a>: MIT.
+            <a href="https://github.com/lucide-icons/lucide">Lucide</a>: ISC.
+            <a href="https://github.com/prettier/prettier">Prettier</a>: MIT. No
+            new runtime libraries were added.
+          </li>
+          <li>
+            Original procedural geometry, articulated models, animations, icon
+            and synthesized sound were authored for Soul Land.
+          </li>
+          <li>
+            Overlook: <em>The Abbey in the Oakwood</em> (1809–1810), Caspar
+            David Friedrich, public domain.
+            <a
+              href="https://commons.wikimedia.org/wiki/File:Caspar_David_Friedrich_-_The_Abbey_in_the_Oakwood_-_WGA08240.jpg"
+              >Source and rights ↗</a
+            >
+          </li>
+          <li>
+            Cinzel and Inter use Google Fonts with local serif/sans-serif
+            fallbacks offline.
+          </li>
+        </ul>
+      </section>
+    </main>
+    <footer>
+      Soul Land · The Fallen Realm · <a href="./">Return to the realm</a> ·
+      Guide generated with CodeRabbit; screenshots captured from the
+      application.
+    </footer>
+  </body>
+</html>

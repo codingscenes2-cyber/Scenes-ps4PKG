@@ -1497,16 +1497,18 @@ export default function World({
           prefs.quality === "low" ? 65 : prefs.quality === "high" ? 120 : 90;
         resize();
       }
+      const decorativeTime = prefs.reducedMotion ? 0 : elapsed;
+      const decorativeDelta = prefs.reducedMotion ? 0 : dt;
       flame.scale.set(
-        0.8 + Math.sin(elapsed * 14) * 0.15,
-        1 + Math.sin(elapsed * 11) * 0.2,
+        0.8 + Math.sin(decorativeTime * 14) * 0.15,
+        1 + Math.sin(decorativeTime * 11) * 0.2,
         0.8,
       );
-      fireLight.intensity = 15 + Math.sin(elapsed * 15) * 3;
+      fireLight.intensity = 15 + Math.sin(decorativeTime * 15) * 3;
       for (let i = 0; i < 240; i++) {
-        motes[i * 3 + 1] += dt * 0.3;
+        motes[i * 3 + 1] += decorativeDelta * 0.3;
         if (motes[i * 3 + 1] > 18) motes[i * 3 + 1] = 0;
-        motes[i * 3] += Math.sin(elapsed + i) * dt * 0.08;
+        motes[i * 3] += Math.sin(decorativeTime + i) * decorativeDelta * 0.08;
       }
       moteGeo.attributes.position.needsUpdate = true;
       const liveWeather = weatherAt(
@@ -1516,8 +1518,8 @@ export default function World({
       for (let i = 0; i < 120; i++) {
         const q = i * 3;
         weatherPositions[q + 1] -=
-          dt * (weather.rain ? 12 : weather.snow ? 0.9 : 0.35);
-        weatherPositions[q] += dt * (weather.snow ? 0.5 : 0.8);
+          decorativeDelta * (weather.rain ? 12 : weather.snow ? 0.9 : 0.35);
+        weatherPositions[q] += decorativeDelta * (weather.snow ? 0.5 : 0.8);
         if (weatherPositions[q + 1] < 0) weatherPositions[q + 1] = 18;
         if (weatherPositions[q] > 24) weatherPositions[q] = -24;
       }
@@ -1528,7 +1530,7 @@ export default function World({
         for (let j = 0; j < a.count; j++)
           a.setZ(
             j,
-            Math.sin(elapsed * 3 + a.getY(j) * 2 + i) *
+            Math.sin(decorativeTime * 3 + a.getY(j) * 2 + i) *
               0.14 *
               (a.getX(j) + 0.5),
           );
@@ -1536,8 +1538,8 @@ export default function World({
       });
 
       loot.forEach((l) => {
-        l.mesh.rotation.y += dt;
-        l.mesh.position.y = 0.8 + Math.sin(elapsed * 2 + l.x) * 0.15;
+        l.mesh.rotation.y += decorativeDelta;
+        l.mesh.position.y = 0.8 + Math.sin(decorativeTime * 2 + l.x) * 0.15;
       });
       for (let i = effects.length - 1; i >= 0; i--) {
         const fx = effects[i];
@@ -1567,7 +1569,7 @@ export default function World({
         const label = labels[i];
         if (!h.paused) label.life -= dt;
         const v = label.pos.clone();
-        v.y += (1.2 - label.life) * 0.9;
+        v.y += prefs.reducedMotion ? 0 : (1.2 - label.life) * 0.9;
         v.project(camera);
         label.node.style.transform = `translate(${(v.x * 0.5 + 0.5) * el.clientWidth}px,${(-v.y * 0.5 + 0.5) * el.clientHeight}px) translate(-50%,-50%)`;
         label.node.style.opacity =
@@ -1705,7 +1707,12 @@ export default function World({
         if (sprint) {
           stamina = Math.max(0, stamina - dt * 15);
           lastTime = elapsed;
-        } else if (elapsed - lastTime > TIMING.staminaDelay)
+        } else if (
+          elapsed - lastTime > TIMING.staminaDelay &&
+          attackTime <= 0 &&
+          !dodge &&
+          parry <= 0
+        )
           stamina = Math.min(
             max.stamina,
             stamina +
@@ -1793,6 +1800,13 @@ export default function World({
               e.mesh.position.z - e.homeZ,
             ),
           );
+          if (behavior === "reset") {
+            e.mode = "idle";
+            e.hp = e.max;
+            e.phase = 1;
+            e.timer = 1.5;
+            continue;
+          }
           if (behavior === "return") {
             const home = new T.Vector3(e.homeX, 0, e.homeZ);
             e.mesh.position.addScaledVector(

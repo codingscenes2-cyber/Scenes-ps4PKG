@@ -1,5 +1,7 @@
 <!-- coderabbit-ai-generated:v1 -->
 
+<!-- coderabbit-ai-generated-section:v1:36941012e1f78a1c4c90fe183d9b18121164c0d5569117a0829ef8d9d5bbf10f -->
+
 <!-- coderabbit-ai-generated-section:v1:bd7f7286b12873acfa67e368899a3ec15f8bbb3273272c180bc9708dfc89457f -->
 
 # Soul Land — The Fallen Realm
@@ -10,7 +12,7 @@ A persistent single-player dark fantasy action RPG built with React, Vite, and t
 
 [Play Soul Land](https://codingscenes2-cyber.github.io/Scenes-ps4PKG/docs/)
 
-The game is hosted by GitHub Pages and does not depend on this coding sandbox. The repository root redirects to the built game under `docs/`. Once the game finishes downloading, a service worker caches its core files for offline reopening. Progress stays in this browser. Settings → Export journey / Import journey transfers a save between devices or website origins. Import replaces the current browser journey; export first to retain it.
+The game is hosted by GitHub Pages and does not depend on this coding sandbox. The repository root redirects to the built game under `docs/`. Wait for Settings → Local save to report Offline ready; a service worker caches all game chunks, artwork, guide and screenshots for offline reopening. Progress stays in this browser. Settings → Export journey / Import journey transfers a save between devices or website origins. Import replaces the current browser journey; export first to retain it.
 
 On supported mobile browsers, use the browser’s Add to Home Screen option for a standalone game window. The web manifest and original icon are included. No account or provider API is required.
 
@@ -23,9 +25,24 @@ npm ci
 npm run dev -- --port 3000
 npm test
 npm run build:pages
+npm run check:build
 ```
 
 `npm run build` produces `dist/`; `npm run build:pages` produces a portable build under `docs/` using relative URLs. Commit source and the regenerated docs together. GitHub Pages currently serves branch `coderabbit/build-soul-land-rpg/47064c05` from `/`. The source entry redirects GitHub Pages visitors to `/Scenes-ps4PKG/docs/`; the Vite build removes that redirect from the finished game. Vite’s development watcher excludes generated builds.
+
+## Systems upgrade (November 2026)
+
+[Field guide, screenshots, changelog and roadmap](https://codingscenes2-cyber.github.io/Scenes-ps4PKG/docs/guide.html) · [Pre-change audit and per-system plans](project-docs/AUDIT.md)
+
+- Seven independent throne arcs, three irreversible fates each, earned powers, evolving final-age codas and a read-only story flag inspector in the journal.
+- Nine-node skill tree with prerequisites and essence costs; equipment rarity identifies provenance. `npm run balance` emits a deterministic 128-row CSV covering class, difficulty and level bands.
+- Buffered inputs, hit-stop, end-recovery dodge cancels, directional hits/dodges, stable lock camera, guard counters and readable signature mechanics for seven throne guardians.
+- Thirteen JSON region profiles drive enemy rosters, hazards, loot, lighting, arena leashes and adaptive music. Original core tables and campaign content were extracted into JSON with unchanged public values.
+- Rebinding, standard controller gameplay/menu navigation, high contrast, color-vision palettes, reduced decorative motion, brightness, rendering presets and separate master/music/effects sliders. High preset enables Three.js bloom on WebGL.
+- Checksummed format-2 save transport, last-good recovery, legacy imports, crash recovery UI, bounded local logs and GitHub Actions test/build/reference checks.
+- Bounded impact pool, early Canvas culling, fallback ground LOD, lazy engine scenes, loading feedback and scoped offline caches. Measured Canvas frame interval gains are modest; no device FPS guarantee is claimed.
+
+Content is in `src/content/`: `core.json`, `campaign.json`, `regions.json`, `thrones.json`, `skills.json`, `combat.json`. Keep identifiers and region indices stable for save compatibility. The pure rule modules enforce prerequisites and idempotent rewards. No new runtime dependencies were added.
 
 ## The witness campaign
 
@@ -53,7 +70,7 @@ Rest at sanctuaries to restore resources, establish a checkpoint, level attribut
 
 ## Saves and compatibility
 
-LocalStorage autosaves every two seconds and on page exit. Clearing site data removes the journey unless exported. Earlier version-one saves migrate to the new campaign fields without losing progression. A new character replaces the old save only after entering the realm. Cloud saves and multiplayer are not included.
+LocalStorage autosaves every two seconds and on page exit. A portable format-2 wrapper holds the version-one character, timestamp and corruption checksum. Existing raw saves still load; a damaged primary falls back to the last validated copy, and Settings reports recovery. Export before clearing site data. A new character replaces the journey only after entering the realm. The structure is ready for a future authenticated sync adapter; cloud synchronization and multiplayer are not implemented.
 
 WebGL2 is preferred. A CPU Canvas renderer projects the same Three.js scene if WebGL is unavailable. Cloud Chromium exercises this fallback; hardware rendering and physical phone performance need device testing. Mobile pixel ratio is capped and the fallback draws at most 30 frames per second.
 
@@ -65,7 +82,7 @@ This is a compact playable RPG with an exploration-to-ending loop. Regions use p
 
 - Procedural world geometry, articulated characters, map, particles, icon, animation and synthesized music: authored for Soul Land.
 - Overlook artwork: *The Abbey in the Oakwood* (1809–1810), Caspar David Friedrich. Public domain. [Wikimedia Commons source and license](https://commons.wikimedia.org/wiki/File:Caspar_David_Friedrich_-_The_Abbey_in_the_Oakwood_-_WGA08240.jpg). Local copy: `public/ashen-veil.jpg`.
-- Three.js, React and Vite: MIT. Lucide icons: ISC. Package licenses are included with installed dependencies.
+- Three.js (including post-processing), React, Vite and Prettier: MIT. Lucide icons: ISC. Package licenses are included with installed dependencies.
 - Cinzel and Inter use Google Fonts with local serif/sans-serif fallbacks when offline.
 
 

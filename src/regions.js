@@ -22,6 +22,7 @@ export function enemyBehavior(e, distance, homeDistance) {
   if (e.stagger > 0) return "staggered";
   if (e.mode === "windup") return "windup";
   if (e.mode === "recovery" && e.timer > 0) return "recovery";
+  if (e.mode === "returning") return homeDistance > 1 ? "return" : "reset";
   if (homeDistance > (e.leash || (e.boss ? 23 : 30))) return "return";
   if (!e.boss && e.hp < e.max * 0.2 && distance < 4) return "retreat";
   if (e.personality === "sentinel" && distance < 4 && e.timer > 0.2)

@@ -521,6 +521,33 @@ function CharacterCreation({ onCreate, onClose }) {
 function App() {
   const [preferences, setPreferences] = useState(loadPreferences);
   const [loadingRegion, setLoadingRegion] = useState(true);
+  const [offlineReady, setOfflineReady] = useState(false);
+  useEffect(() => {
+    if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return;
+    let mounted = true;
+    const check = () => {
+      if (!navigator.serviceWorker.controller) return;
+      const channel = new MessageChannel();
+      const timeout = setTimeout(() => {
+        channel.port1.close();
+      }, 1500);
+      channel.port1.onmessage = (e) => {
+        clearTimeout(timeout);
+        if (mounted) setOfflineReady(e.data?.ready === true);
+        channel.port1.close();
+      };
+      navigator.serviceWorker.controller.postMessage(
+        { type: "SOUL_CACHE_STATUS" },
+        [channel.port2],
+      );
+    };
+    navigator.serviceWorker.ready.then(check);
+    navigator.serviceWorker.addEventListener("controllerchange", check);
+    return () => {
+      mounted = false;
+      navigator.serviceWorker.removeEventListener("controllerchange", check);
+    };
+  }, []);
   const [recovered] = useState(() => saveHealth() === "recovered");
   useEffect(() => {
     savePreferences(preferences);
@@ -1706,7 +1733,10 @@ function App() {
           <div className="character-layout">
             <div className="character-art">
               <Suspense fallback={<p>Gathering the wanderer…</p>}>
-                <CharacterViewer state={state} />
+                <CharacterViewer
+                  state={state}
+                  reducedMotion={preferences.reducedMotion}
+                />
               </Suspense>
               <p>
                 {state.gender} · {state.appearance}
@@ -2489,7 +2519,14 @@ function App() {
           </div>
           <div className="settings-row">
             <div>
-              <h3>Local save</h3>
+              <h3>
+                Local save ·{" "}
+                {offlineReady
+                  ? "Offline ready"
+                  : import.meta.env.DEV
+                    ? "Development preview"
+                    : "Preparing offline cache"}
+              </h3>
               <p>
                 {recovered
                   ? "Recovered the last good snapshot after detecting a damaged save."

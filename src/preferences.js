@@ -99,7 +99,7 @@ export class GamepadInput {
   constructor() {
     this.buttons = [];
   }
-  poll(pad) {
+  poll(pad, now = performance.now() / 1000) {
     if (!pad) {
       this.buttons = [];
       return { x: 0, z: 0, actions: [], block: false, sprint: false };
@@ -126,6 +126,13 @@ export class GamepadInput {
     pad.buttons.forEach((b, i) => {
       if (b.pressed && !this.buttons[i] && map[i]) actions.push(map[i]);
     });
+    if (pad.buttons[2]?.pressed && !this.buttons[2]) this.chargeStart = now;
+    if (
+      !pad.buttons[2]?.pressed &&
+      this.buttons[2] &&
+      now - (this.chargeStart ?? now) > 0.6
+    )
+      actions.push("charged");
     this.buttons = pad.buttons.map((b) => b.pressed);
     return {
       x: dead(pad.axes[0] || 0),

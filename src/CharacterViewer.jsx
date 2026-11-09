@@ -7,7 +7,9 @@ import {
   disposeActor,
 } from "./characters";
 import { SoftwareRenderer } from "./SoftwareRenderer";
-export default function CharacterViewer({ state }) {
+export default function CharacterViewer({ state, reducedMotion = false }) {
+  const reducedMotionRef = useRef(reducedMotion);
+  reducedMotionRef.current = reducedMotion;
   const ref = useRef(),
     rig = useRef(),
     [clip, setClip] = useState("idle");
@@ -92,7 +94,7 @@ export default function CharacterViewer({ state }) {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       t += dt;
-      if (!drag) angle += dt * 0.16;
+      if (!drag && !reducedMotionRef.current) angle += dt * 0.16;
       actor.rotation.y = angle;
       animateActor(actor, dt, t, {
         moving: rig.current?.userData.previewWalk ? 1 : 0,

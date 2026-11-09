@@ -55,6 +55,11 @@ test("standard controller uses deadzone and rising edges, releases guard and res
   assert.deepEqual(c.poll(pad).actions, []);
   assert.equal(c.poll(null).block, false);
   assert.deepEqual(c.poll(pad).actions, ["dodge"]);
+  pad.buttons[2].pressed = true;
+  assert.deepEqual(c.poll(pad, 1).actions, ["light"]);
+  pad.buttons[2].pressed = false;
+  assert.deepEqual(c.poll(pad, 1.7).actions, ["charged"]);
+  assert.deepEqual(c.poll(pad, 1.8).actions, []);
 });
 test("effect pool remains bounded and reuses released geometry without double release", () => {
   const pool = new EffectPool(() => ({ visible: true }), 2);
