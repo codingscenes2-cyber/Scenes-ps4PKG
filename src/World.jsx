@@ -1117,7 +1117,12 @@ export default function World({
       const max = limits(s);
       const cancellable =
         name === "dodge" &&
-        canDodgeCancel(cooldown, attackDuration, pending.length);
+        canDodgeCancel(
+          cooldown,
+          attackDuration,
+          pending.length,
+          attackTime > 0,
+        );
       const timed = [
         "light",
         "heavy",
@@ -1172,6 +1177,8 @@ export default function World({
         invulnerable = weight > 20 ? TIMING.heavyIFrames : TIMING.lightIFrames;
         playClip(hero, "roll", 0.48);
         cooldown = TIMING.dodgeRecovery;
+        attackTime = 0;
+        attackDuration = 0;
         lastTime = elapsed;
         const dx =
           input.x +
@@ -1653,7 +1660,12 @@ export default function World({
           elapsed,
           cooldown <= 0 ||
             (buffer.entry?.action === "dodge" &&
-              canDodgeCancel(cooldown, attackDuration, pending.length)),
+              canDodgeCancel(
+                cooldown,
+                attackDuration,
+                pending.length,
+                attackTime > 0,
+              )),
         );
         if (followup) action(followup);
         s = stateRef.current;

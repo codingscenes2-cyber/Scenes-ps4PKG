@@ -30,9 +30,11 @@ test("input buffering retains one recent intent, waits for recovery, expires and
   assert.equal(b.take(4, true), null);
 });
 test("dodges cancel only after the active hit and near recovery end; melee respects facing and reach", () => {
-  assert.equal(canDodgeCancel(0.1, 0.47, 1), false);
-  assert.equal(canDodgeCancel(0.2, 0.47, 0), false);
-  assert.equal(canDodgeCancel(0.1, 0.47, 0), true);
+  assert.equal(canDodgeCancel(0.1, 0.47, 1, true), false);
+  assert.equal(canDodgeCancel(0.2, 0.47, 0, true), false);
+  assert.equal(canDodgeCancel(0.1, 0.47, 0, true), true);
+  assert.equal(canDodgeCancel(0.1, 0.47, 0, false), false);
+  assert.equal(canDodgeCancel(0.1, 0.47, 0), false);
   assert.equal(meleeConnects({ x: 0, z: 0 }, { x: 0, z: 2 }, 0, 3), true);
   assert.equal(meleeConnects({ x: 0, z: 0 }, { x: 0, z: -2 }, 0, 3), false);
   assert.equal(meleeConnects({ x: 0, z: 0 }, { x: 0, z: 4 }, 0, 3), false);

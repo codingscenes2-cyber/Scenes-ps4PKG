@@ -22,9 +22,12 @@ export class ActionBuffer {
     this.entry = null;
   }
 }
-export function canDodgeCancel(cooldown, total, pending) {
+export function canDodgeCancel(cooldown, total, pending, attacking = false) {
   return (
-    total > 0 && pending === 0 && cooldown <= total * TIMING.cancelRemainder
+    attacking &&
+    total > 0 &&
+    pending === 0 &&
+    cooldown <= total * TIMING.cancelRemainder
   );
 }
 export function meleeConnects(from, to, facing, reach) {
