@@ -32,7 +32,7 @@ import {
   enemyBehavior,
   signatureEffect,
 } from "./regions";
-import { bonuses } from "./progression";
+import { bonuses, spellFocusCost, bossEquipment } from "./progression";
 import { storyState } from "./story";
 import { bossMove, attackConnects } from "./combat";
 import { SoftwareRenderer } from "./SoftwareRenderer";
@@ -1099,7 +1099,7 @@ export default function World({
         update.bosses = [...s.bosses, s.region];
         update.shards = Math.min(7, s.shards + 1);
         const item = region.reward;
-        update.inventory = [...new Set([...s.inventory, item])];
+        Object.assign(update, bossEquipment(s, item));
         update.spells = [
           ...new Set([...s.spells, SPELLS[Math.min(s.region + 1, 9)].name]),
         ];
@@ -1230,7 +1230,7 @@ export default function World({
       }
       if (name === "magic") {
         const spell = SPELLS.find((x) => x.name === s.spell) || SPELLS[0];
-        const focusCost = Math.ceil(spell.cost * (1 + bonuses(s).focusCost));
+        const focusCost = spellFocusCost(s, spell);
         if (cooldown > 0 || s.focus < focusCost) {
           event("Not enough focus, or still recovering.");
           return;

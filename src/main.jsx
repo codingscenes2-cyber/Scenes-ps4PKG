@@ -52,7 +52,7 @@ import {
 import { regionProfile } from "./regions";
 import { SkillTree, ThroneArcs } from "./ProgressionPanels";
 import { endingCoda } from "./story";
-import { gearRarity } from "./progression";
+import { gearRarity, bonuses, spellFocusCost } from "./progression";
 import { encodeSave } from "./saveTransport";
 import { RecoveryBoundary, installErrorLogging } from "./RecoveryBoundary";
 import { SoulAudio } from "./audio";
@@ -1631,7 +1631,8 @@ function App() {
                   <div className="eyebrow gold">{s.type}</div>
                   <h3>{s.name}</h3>
                   <p>
-                    {s.cost} focus · {s.damage || "Healing"} base power
+                    {spellFocusCost(state, s)} focus · {s.damage || "Healing"}{" "}
+                    base power
                   </p>
                   <small>
                     Scales with {s.scaling} · Range 17m · Cast recovery 0.9s
@@ -1663,8 +1664,9 @@ function App() {
                   {state.flasks} / {flaskCount(state)} charges
                 </p>
                 <small>
-                  Rest at a sanctuary to replenish. Restore 55% vitality per
-                  charge.
+                  Rest at a sanctuary to replenish. Restore{" "}
+                  {Math.round((0.55 + bonuses(state).healing) * 100)}% vitality
+                  per charge.
                 </small>
               </div>
               <div className="equipment-card">
@@ -1693,7 +1695,12 @@ function App() {
                   <div className="equipment-card" key={r}>
                     <Gem size={40} />
                     <h3>{r}</h3>
-                    <p>A token of a choice remembered.</p>
+                    <span
+                      className={`rarity rarity-${gearRarity(r, REGIONS).toLowerCase()}`}
+                    >
+                      {gearRarity(r, REGIONS)}
+                    </span>
+                    <p>A remembrance carried through the Fracture.</p>
                   </div>
                 ))
               ) : (

@@ -15,6 +15,12 @@ import {
   endingCoda,
 } from "../src/story.js";
 import { SKILLS, learnSkill, bonuses } from "../src/progression.js";
+import {
+  spellFocusCost,
+  bossEquipment,
+  recoveredRelics,
+} from "../src/progression.js";
+import { REGIONS, WEAPONS, SPELLS } from "../src/data.js";
 import { simulate } from "../scripts/balance.mjs";
 const hero = () =>
   createCharacter({ className: "Knight", difficulty: "Normal" });
@@ -94,4 +100,43 @@ test("deterministic balance sweep covers all classes, difficulties and progressi
     assert.equal(row.skillEssence, 2160);
   }
   assert.ok(bonuses({ skills: SKILLS.map((n) => n.id) }).defence < 0.15);
+});
+
+test("Deep Well discounts only offensive magic, preserving the stated healing cost", () => {
+  const s = { ...hero(), skills: ["open-mind", "deep-well"] };
+  for (const spell of SPELLS)
+    assert.equal(
+      spellFocusCost(s, spell),
+      spell.damage > 0 ? Math.ceil(spell.cost * 0.9) : spell.cost,
+    );
+});
+test("every guardian reward is visible, and legacy hidden relics migrate without removing earned items", () => {
+  const s = hero();
+  for (const r of REGIONS) {
+    const reward = bossEquipment(s, r.reward);
+    assert.ok(
+      (WEAPONS.some((w) => w.name === r.reward)
+        ? reward.inventory
+        : reward.relics
+      ).includes(r.reward),
+    );
+    assert.deepEqual(bossEquipment({ ...s, ...reward }, r.reward), reward);
+  }
+  const legacy = {
+    ...s,
+    inventory: [
+      ...s.inventory,
+      "Cinderheart",
+      "Oracle’s Eye",
+      "Creator’s Relic",
+    ],
+  };
+  assert.deepEqual(recoveredRelics(legacy), [
+    "Cinderheart",
+    "Oracle’s Eye",
+    "Creator’s Relic",
+  ]);
+  const loaded = loadSave({ getItem: () => JSON.stringify(legacy) });
+  assert.deepEqual(loaded.inventory, legacy.inventory);
+  assert.equal(loaded.relics.length, 3);
 });

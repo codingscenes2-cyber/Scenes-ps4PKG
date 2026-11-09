@@ -1,3 +1,4 @@
+import { WEAPONS, REGIONS } from "./data.js";
 import SKILLS from "./content/skills.json" with { type: "json" };
 import { storyState } from "./story.js";
 export { SKILLS };
@@ -65,4 +66,27 @@ export function gearRarity(name, regions) {
       : index >= 0
         ? "Rare"
         : "Common";
+}
+export function spellFocusCost(s, spell) {
+  return Math.ceil(
+    spell.cost * (1 + (spell.damage > 0 ? bonuses(s).focusCost : 0)),
+  );
+}
+export function bossEquipment(s, reward) {
+  const weapon = WEAPONS.some((w) => w.name === reward);
+  return {
+    inventory: weapon ? [...new Set([...s.inventory, reward])] : s.inventory,
+    relics: weapon ? s.relics : [...new Set([...s.relics, reward])],
+  };
+}
+export function recoveredRelics(s) {
+  const names = REGIONS.map((r) => r.reward).filter(
+    (name) => !WEAPONS.some((w) => w.name === name),
+  );
+  return [
+    ...new Set([
+      ...s.relics,
+      ...s.inventory.filter((name) => names.includes(name)),
+    ]),
+  ];
 }

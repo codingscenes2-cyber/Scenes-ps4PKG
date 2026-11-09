@@ -8,7 +8,7 @@ import {
 } from "./data.js";
 import { campaignState } from "./campaign.js";
 import { storyState } from "./story.js";
-import { bonuses, knownSkills } from "./progression.js";
+import { bonuses, knownSkills, recoveredRelics } from "./progression.js";
 import { encodeSave, decodeSave } from "./saveTransport.js";
 export const SAVE_KEY = "soul-land-save-v1";
 export const softCap = (v) => (v <= 30 ? v : 30 + (v - 30) * 0.45);
@@ -138,6 +138,7 @@ export function validateSave(s) {
       campaign: campaignState(s),
       story: storyState(s),
       skills: knownSkills(s),
+      relics: recoveredRelics(s),
       defeatedCounts: Object.fromEntries(
         Object.entries(
           s.defeatedCounts && typeof s.defeatedCounts === "object"
