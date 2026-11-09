@@ -39,6 +39,7 @@ export class SoftwareRenderer {
       camera.projectionMatrix,
       camera.matrixWorldInverse,
     );
+    const frustum = new T.Frustum().setFromProjectionMatrix(matrix);
     const fog = scene.fog?.color || new T.Color("#7b8271");
     const project = (v) => {
       const p = v.clone().applyMatrix4(matrix);
@@ -68,6 +69,15 @@ export class SoftwareRenderer {
         return;
       }
       if (!m.isMesh) return;
+      if (m.frustumCulled && !frustum.intersectsObject(m)) return;
+      const cullDistance = scene.userData.cullDistance || 90;
+      if (
+        !m.isInstancedMesh &&
+        m.geometry?.boundingSphere?.radius < 5 &&
+        m.getWorldPosition(new T.Vector3()).distanceToSquared(camera.position) >
+          cullDistance * cullDistance
+      )
+        return;
       if (m.isInstancedMesh) {
         if (!this.grass) {
           this.grass = [];

@@ -3487,3 +3487,129 @@ kbd {
     padding: 18px;
   }
 }
+
+.preferences h3 {
+  margin: 28px 0 14px;
+}
+.slider-setting {
+  display: block;
+  margin: 16px 0;
+  text-transform: capitalize;
+}
+.slider-setting span {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.slider-setting input {
+  width: 100%;
+  margin: 12px 0;
+  accent-color: #c6b07b;
+  min-height: 28px;
+}
+.toggle-setting,
+.select-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid #65654c44;
+  font-size: 13px;
+}
+.toggle-setting input {
+  width: 22px;
+  height: 22px;
+  accent-color: #bca36c;
+}
+.select-setting select {
+  max-width: 60%;
+  background: #242c23;
+  color: #e2d8bf;
+  padding: 12px;
+  border: 1px solid #6b684c;
+}
+.binding-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.binding-grid button {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  text-transform: capitalize;
+  background: #20271f;
+  color: #d1d2bb;
+  border: 1px solid #5e604555;
+  padding: 12px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.binding-grid kbd {
+  color: #e6c585;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.realm-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  background: #101a16;
+  color: #d8c795;
+  font:
+    18px Cinzel,
+    serif;
+  letter-spacing: 2px;
+}
+.high-contrast {
+  --text: #f8f3e5;
+  --muted: #cdd3c2;
+}
+.high-contrast .muted,
+.high-contrast small,
+.high-contrast p {
+  color: #e0e2d3;
+}
+.high-contrast .bar {
+  outline: 1px solid #e9e2c2;
+}
+.reduced-motion .live-dot,
+.reduced-motion .notice,
+.reduced-motion .combat-float {
+  animation: none !important;
+}
+.app[data-vision="deuteranopia"] .health-bar,
+.app[data-vision="protanopia"] .health-bar {
+  background: #e3b04d;
+}
+.app[data-vision="tritanopia"] .health-bar {
+  background: #e37eab;
+}
+@media (max-width: 480px) {
+  .binding-grid {
+    grid-template-columns: 1fr;
+  }
+  .select-setting {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .select-setting select {
+    max-width: 100%;
+    width: 100%;
+  }
+}
+.high-contrast .hud-bar {
+  outline: 1px solid #e8dfc3;
+}
+.app[data-vision="deuteranopia"] .hud-bar > .hp,
+.app[data-vision="protanopia"] .hud-bar > .hp {
+  background: #c59537;
+}
+.app[data-vision="tritanopia"] .hud-bar > .hp {
+  background: #be628c;
+}

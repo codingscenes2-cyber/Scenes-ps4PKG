@@ -1,5 +1,11 @@
 import React, { useEffect, useRef } from "react";
 import * as T from "three";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { DEFAULT_PREFERENCES, GamepadInput, keyAction } from "./preferences";
+import { EffectPool } from "./effectPool";
 import {
   createActor,
   animateActor,
@@ -87,6 +93,8 @@ function skyTexture(region) {
 }
 export default function World({
   state,
+  preferences = DEFAULT_PREFERENCES,
+  onReady,
   stateRef,
   active,
   paused,
@@ -99,6 +107,8 @@ export default function World({
   cinematic = false,
 }) {
   const mount = useRef();
+  const preferencesRef = useRef(preferences);
+  preferencesRef.current = preferences;
   const handlers = useRef({
     onChange,
     onEvent,
@@ -108,6 +118,7 @@ export default function World({
     active,
   });
   handlers.current = {
+    onReady,
     onChange,
     onEvent,
     onTarget,
@@ -144,6 +155,22 @@ export default function World({
     const camera = new T.PerspectiveCamera(43, 1, 0.1, 160);
     camera.position.set(16, 9, 24);
     camera.lookAt(0, 3, -8);
+    // Real bloom is restricted to the high preset to keep phone rendering affordable.
+    const composer = hasGL ? new EffectComposer(renderer) : null;
+    const bloom = hasGL
+      ? new UnrealBloomPass(new T.Vector2(512, 512), 0.3, 0.35, 0.85)
+      : null;
+    const outputPass = hasGL ? new OutputPass() : null;
+    if (composer) {
+      composer.setPixelRatio(1);
+      composer.addPass(new RenderPass(scene, camera));
+      composer.addPass(bloom);
+      composer.addPass(outputPass);
+    }
+    const drawScene = () =>
+      composer && preferencesRef.current.quality === "high"
+        ? composer.render()
+        : renderer.render(scene, camera);
     scene.add(new T.HemisphereLight("#d9dbc0", "#3b4031", 2));
     const sun = new T.DirectionalLight(profile.lighting.color, 3);
     sun.position.set(-18, 30, -20);
@@ -182,7 +209,12 @@ export default function World({
       scene.add(m);
       return m;
     }
-    const groundGeo = new T.PlaneGeometry(190, 190, 70, 70);
+    const groundGeo = new T.PlaneGeometry(
+      190,
+      190,
+      hasGL ? 70 : 38,
+      hasGL ? 70 : 38,
+    );
     groundGeo.rotateX(-Math.PI / 2);
     const a = groundGeo.attributes.position;
     for (let i = 0; i < a.count; i++)
@@ -454,13 +486,30 @@ export default function World({
     npc.position.set(-6, 0, 2);
     scene.add(npc);
     npc.rotation.y = 1;
+    const arenaOutline = add(
+      new T.RingGeometry(
+        profile.arena.radius - 0.08,
+        profile.arena.radius + 0.08,
+        80,
+      ),
+      new T.MeshBasicMaterial({
+        color: profile.lighting.color,
+        transparent: true,
+        opacity: 0.22,
+        side: T.DoubleSide,
+      }),
+      profile.arena.x,
+      0.13,
+      profile.arena.z,
+    );
+    arenaOutline.rotation.x = -Math.PI / 2;
     const bossDead = state?.bosses?.includes(state.region);
     const enemies = [];
     const enemyPositions = [
       [-3, -15],
       [5, -22],
       [-6, -28],
-      [1, -37],
+      [profile.arena.x, profile.arena.z],
     ];
     enemyPositions.forEach(([x, z], i) => {
       if (i === 3 && bossDead) return;
@@ -498,6 +547,7 @@ export default function World({
         z,
         homeX: x,
         homeZ: z,
+        leash: boss ? profile.arena.radius + 6 : 30,
         hp: health,
         max: health,
         boss,
@@ -779,6 +829,23 @@ export default function World({
       deathTimer = 0,
       holding = 0;
     const buffer = new ActionBuffer();
+    const gamepad = new GamepadInput();
+    let padMove = { x: 0, z: 0 };
+    let padGuard = false,
+      padSprint = false;
+    const ringPool = new EffectPool(() => {
+      const mesh = new T.Mesh(
+        new T.RingGeometry(0.3, 0.5, 24),
+        new T.MeshBasicMaterial({
+          transparent: true,
+          opacity: 1,
+          side: T.DoubleSide,
+        }),
+      );
+      mesh.rotation.x = -Math.PI / 2;
+      scene.add(mesh);
+      return mesh;
+    }, 16);
     const effects = [];
     const pending = [];
     const echoHazards = [];
@@ -868,20 +935,15 @@ export default function World({
       return closest;
     };
     function burst(pos, color = "#f2c97b", size = 1) {
-      const mesh = new T.Mesh(
-        new T.RingGeometry(0.3, 0.5, 24),
-        new T.MeshBasicMaterial({
-          color,
-          transparent: true,
-          opacity: 1,
-          side: T.DoubleSide,
-        }),
-      );
-      mesh.rotation.x = -Math.PI / 2;
+      const mesh = ringPool.acquire();
+      if (!mesh) return;
+      mesh.visible = true;
+      mesh.material.color.set(color);
+      mesh.material.opacity = 1;
+      mesh.scale.setScalar(1);
       mesh.position.copy(pos);
       mesh.position.y = 0.3;
-      scene.add(mesh);
-      effects.push({ mesh, life: 0.5, size });
+      effects.push({ mesh, life: 0.5, size, pooled: true });
     }
     function strike(kind) {
       const s = stateRef.current;
@@ -944,7 +1006,7 @@ export default function World({
           target.mesh.position.x - hero.position.x,
           target.mesh.position.z - hero.position.z,
         );
-      if (kind === "light" && keys.shift) kind = "sprint";
+      if (kind === "light" && (keys.shift || padSprint)) kind = "sprint";
       if (kind === repeated) repeatCount++;
       else {
         repeatCount = 0;
@@ -1113,10 +1175,12 @@ export default function World({
         lastTime = elapsed;
         const dx =
           input.x +
+          padMove.x +
           (keys.d || keys.arrowright ? 1 : 0) -
           (keys.a || keys.arrowleft ? 1 : 0);
         const dz =
           input.z +
+          padMove.z +
           (keys.s || keys.arrowdown ? 1 : 0) -
           (keys.w || keys.arrowup ? 1 : 0);
         const len = name === "backstep" ? 0 : Math.hypot(dx, dz);
@@ -1186,22 +1250,33 @@ export default function World({
             e.mesh.position,
             spell.type === "Pyromancy" ? "#e7a665" : "#9ccbd4",
           );
-          const before = e.hp;
-          e.hp = Math.max(
-            0,
-            e.hp -
-              Math.round(
-                (spell.damage + s.attrs[spell.scaling] * 2) *
-                  (s.region === 9 && spell.scaling === "Faith" ? 1.3 : 1) *
-                  (weather.rain && spell.type === "Pyromancy" ? 0.75 : 1),
-              ),
-          );
-          floating(before - e.hp, e.mesh.position);
-          playClip(e.mesh, "hurt", 0.25);
-          e.stagger = spell.type === "Time" ? 3 : 0.5;
-          burst(e.mesh.position, "#a1cbd5", 3);
-          event(`${spell.name} strikes ${e.name}.`, "combat");
-          if (e.hp === 0) kill(e);
+          pending.push({
+            remaining: 0.28,
+            run: () => {
+              if (
+                e.hp <= 0 ||
+                stateRef.current.hp <= 0 ||
+                hero.position.distanceTo(e.mesh.position) > 17
+              )
+                return;
+              const before = e.hp;
+              e.hp = Math.max(
+                0,
+                e.hp -
+                  Math.round(
+                    (spell.damage + s.attrs[spell.scaling] * 2) *
+                      (s.region === 9 && spell.scaling === "Faith" ? 1.3 : 1) *
+                      (weather.rain && spell.type === "Pyromancy" ? 0.75 : 1),
+                  ),
+              );
+              floating(before - e.hp, e.mesh.position);
+              playClip(e.mesh, "hurt", 0.25);
+              e.stagger = spell.type === "Time" ? 3 : 0.5;
+              burst(e.mesh.position, "#a1cbd5", 3);
+              event(`${spell.name} strikes ${e.name}.`, "combat");
+              if (e.hp === 0) kill(e);
+            },
+          });
         } else event("The spell dissolves beyond its range.");
         return;
       }
@@ -1246,7 +1321,9 @@ export default function World({
             patch({
               secret: [...s.secret, l.id],
               materials: s.materials + (l.secret ? 4 : profile.loot.embers),
-              essence: s.essence + (l.secret ? 100 + s.region * 20 : profile.loot.essence),
+              essence:
+                s.essence +
+                (l.secret ? 100 + s.region * 20 : profile.loot.essence),
             });
             l.mesh.visible = false;
             l.light.visible = false;
@@ -1335,41 +1412,36 @@ export default function World({
       )
         return;
       const k = e.key.toLowerCase();
-      if (
-        [
-          " ",
-          "arrowup",
-          "arrowdown",
-          "arrowleft",
-          "arrowright",
-          "tab",
-        ].includes(k)
-      )
-        e.preventDefault();
-      keys[k] = true;
-      if (e.repeat) return;
-      const binds = {
-        " ": "dodge",
-        j: "light",
-        k: "heavy",
-        q: "heal",
-        e: "interact",
-        r: "magic",
-        f: "parry",
-        c: "skill",
-        tab: "lock",
-        b: "block-on",
-        v: "backstep",
-        x: "jump",
+      const control = keyAction(k, preferencesRef.current.bindings);
+      if (!control) return;
+      e.preventDefault();
+      const moveKeys = {
+        up: "w",
+        down: "s",
+        left: "a",
+        right: "d",
+        sprint: "shift",
       };
-      if (k === "j") holding = elapsed;
-      if (binds[k]) action(binds[k]);
+      if (moveKeys[control]) keys[moveKeys[control]] = true;
+      if (e.repeat) return;
+      if (control === "light") holding = elapsed;
+      action(control === "block" ? "block-on" : control);
     };
     const up = (e) => {
-      const k = e.key.toLowerCase();
-      keys[k] = false;
-      if (k === "b") guard = false;
-      if (k === "j" && elapsed - holding > 0.6) action("charged");
+      const control = keyAction(
+        e.key.toLowerCase(),
+        preferencesRef.current.bindings,
+      );
+      const moveKeys = {
+        up: "w",
+        down: "s",
+        left: "a",
+        right: "d",
+        sprint: "shift",
+      };
+      if (moveKeys[control]) keys[moveKeys[control]] = false;
+      if (control === "block") guard = false;
+      if (control === "light" && elapsed - holding > 0.6) action("charged");
     };
     const blur = () => {
       Object.keys(keys).forEach((k) => (keys[k] = false));
@@ -1385,6 +1457,7 @@ export default function World({
       const w = el.clientWidth,
         h = el.clientHeight;
       renderer.setSize(w, h);
+      composer?.setSize(w, h);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     };
@@ -1392,14 +1465,38 @@ export default function World({
     ro.observe(el);
     resize();
     let frame;
+    let readySent = false;
+    let renderPreferences = "";
     let lastDraw = -1;
     function animate() {
       frame = requestAnimationFrame(animate);
+      const frameStart = performance.now();
       const realDelta = Math.min(clock.getDelta(), 0.05);
       const dt = hitStop > 0 ? 0 : realDelta;
       hitStop = Math.max(0, hitStop - realDelta);
       shake = Math.max(0, shake - realDelta * 1.5);
       elapsed += dt;
+      const prefs = preferencesRef.current;
+      const settingsKey = `${prefs.quality}:${prefs.brightness}`;
+      if (settingsKey !== renderPreferences) {
+        renderPreferences = settingsKey;
+        renderer.setPixelRatio(
+          Math.min(
+            devicePixelRatio,
+            prefs.quality === "low"
+              ? 0.85
+              : prefs.quality === "high"
+                ? 1.8
+                : 1.25,
+          ),
+        );
+        renderer.shadowMap.enabled = prefs.quality !== "low";
+        renderer.toneMappingExposure =
+          profile.lighting.exposure * prefs.brightness;
+        scene.userData.cullDistance =
+          prefs.quality === "low" ? 65 : prefs.quality === "high" ? 120 : 90;
+        resize();
+      }
       flame.scale.set(
         0.8 + Math.sin(elapsed * 14) * 0.15,
         1 + Math.sin(elapsed * 11) * 0.2,
@@ -1455,9 +1552,12 @@ export default function World({
         } else fx.mesh.scale.setScalar(1 + (1 - fx.life * 2) * fx.size);
         if (!fx.projectile) fx.mesh.material.opacity = fx.life * 2;
         if (fx.life <= 0) {
-          scene.remove(fx.mesh);
-          fx.mesh.geometry.dispose();
-          fx.mesh.material.dispose();
+          if (fx.pooled) ringPool.release(fx.mesh);
+          else {
+            scene.remove(fx.mesh);
+            fx.mesh.geometry.dispose();
+            fx.mesh.material.dispose();
+          }
           effects.splice(i, 1);
         }
       }
@@ -1507,6 +1607,22 @@ export default function World({
             l.light.visible = l.mesh.visible;
           }
       }
+      const pad = Array.from(navigator.getGamepads?.() || []).find(
+        (p) => p?.connected && p.mapping === "standard",
+      );
+      const padInput = gamepad.poll(pad);
+      padMove = { x: padInput.x, z: padInput.z };
+      padGuard = padInput.block;
+      padSprint = padInput.sprint;
+      if (h.active && !h.paused)
+        for (const intent of padInput.actions) {
+          if (intent === "pause") {
+            h.onInteract("pause");
+            blur();
+            break;
+          } else action(intent);
+        }
+      s = stateRef.current;
       if (h.paused) blur();
       if (lostSoul) {
         lostSoul.visible = !!s?.dropped;
@@ -1520,7 +1636,7 @@ export default function World({
             patch(deathState(s, { x: hero.position.x, z: hero.position.z }));
             h.onInteract("respawn");
           }
-          renderer.render(scene, camera);
+          drawScene();
           return;
         }
         for (let i = pending.length - 1; i >= 0; i--) {
@@ -1548,11 +1664,13 @@ export default function World({
         let mx =
             (keys.d || keys.arrowright ? 1 : 0) -
             (keys.a || keys.arrowleft ? 1 : 0) +
-            input.x,
+            input.x +
+            padMove.x,
           mz =
             (keys.s || keys.arrowdown ? 1 : 0) -
             (keys.w || keys.arrowup ? 1 : 0) +
-            input.z;
+            input.z +
+            padMove.z;
         const len = Math.hypot(mx, mz);
         if (len > 0) {
           mx /= len;
@@ -1564,7 +1682,7 @@ export default function World({
           dodge.time -= dt;
           if (dodge.time <= 0) dodge = null;
         }
-        const sprint = keys.shift && s.stamina > 3 && len > 0;
+        const sprint = (keys.shift || padSprint) && s.stamina > 3 && len > 0;
         const speed = (dodge ? 15 : sprint ? 7 : 4) * (slowed > 0 ? 0.65 : 1);
         let nx = hero.position.x + mx * speed * dt,
           nz = hero.position.z + mz * speed * dt;
@@ -1579,7 +1697,7 @@ export default function World({
         animateActor(hero, dt, elapsed, {
           moving: len > 0 ? 1 : 0,
           sprint,
-          guard,
+          guard: guard || padGuard,
         });
         hero.rotation.z = 0;
         const max = limits(s);
@@ -1594,7 +1712,7 @@ export default function World({
               dt *
                 profile.staminaRegen *
                 (1 + bonuses(s).regen) *
-                (guard ? 0.35 : 1),
+                (guard || padGuard ? 0.35 : 1),
           );
         let hp = s.hp;
         let focus = s.focus;
@@ -1610,7 +1728,7 @@ export default function World({
               const dmg = receiveDamage(
                 s,
                 hazard.power * DIFFICULTIES[s.difficulty].damage,
-                guard,
+                guard || padGuard,
               );
               hp = Math.max(0, hp - dmg);
               floating(`−${dmg}`, hero.position, true);
@@ -1713,7 +1831,16 @@ export default function World({
             );
           e.timer -= dt;
           if (e.mode === "windup") {
-            e.ring.material.opacity = 0.25 + Math.sin(elapsed * 15) * 0.12;
+            e.ring.material.opacity = prefs.reducedMotion
+              ? 0.4
+              : 0.25 + Math.sin(elapsed * 15) * 0.12;
+            e.ring.material.color.set(
+              prefs.colorblind === "tritanopia"
+                ? "#f078c9"
+                : prefs.colorblind !== "none"
+                  ? "#ffce55"
+                  : "#d14931",
+            );
             if (e.timer <= 0) {
               const radius = e.personality === "caster" ? 2 : 3.3;
               const hit = e.boss
@@ -1746,7 +1873,7 @@ export default function World({
                     raw *
                       DIFFICULTIES[s.difficulty].damage *
                       (e.boss ? e.move.power : 1),
-                    guard && stamina > 0,
+                    (guard || padGuard) && stamina > 0,
                   );
                   hp = Math.max(0, hp - dmg);
                   shake = Math.max(shake, 0.16);
@@ -1759,7 +1886,7 @@ export default function World({
                   flaskSeal = Math.max(flaskSeal, status.flaskSeal || 0);
                   floating(`−${dmg}`, hero.position, true);
                   playClip(hero, "hurt", 0.25);
-                  if (guard) {
+                  if (guard || padGuard) {
                     guardCounter = 0.75;
                     stamina = Math.max(0, stamina - 23);
                     if (stamina === 0) {
@@ -1871,7 +1998,7 @@ export default function World({
         ).length;
         sun.intensity = (night ? 0.9 : 3) + fate * 0.07;
         scene.fog.density *= 1 - fate * 0.025;
-        scene.userData.lightFactor = night ? 0.65 : 1;
+        scene.userData.lightFactor = (night ? 0.65 : 1) * prefs.brightness;
         if (nextTime < s.time) {
           stateRef.current = {
             ...stateRef.current,
@@ -1938,8 +2065,15 @@ export default function World({
           focusPoint.lerp(locked.mesh.position, 0.35);
         const desired = focusPoint.clone().add(new T.Vector3(8, 8, 12));
         camera.position.lerp(desired, dt * 2);
-        camera.position.x += Math.sin(performance.now() * 0.09) * shake;
-        camera.position.y += Math.cos(performance.now() * 0.07) * shake * 0.5;
+        camera.position.x +=
+          Math.sin(performance.now() * 0.09) *
+          shake *
+          (prefs.shake && !prefs.reducedMotion ? 1 : 0);
+        camera.position.y +=
+          Math.cos(performance.now() * 0.07) *
+          shake *
+          0.5 *
+          (prefs.shake && !prefs.reducedMotion ? 1 : 0);
         camera.lookAt(focusPoint.x, focusPoint.y + 1.1, focusPoint.z - 3);
       } else if (!h.active) {
         camera.position.x = 15;
@@ -1952,8 +2086,24 @@ export default function World({
           elapsed - lastDraw > (hasGL ? 1 / 60 : 1 / 30)) ||
         lastDraw < 0
       ) {
-        renderer.render(scene, camera);
+        drawScene();
+        if (import.meta.env.DEV) {
+          const stats =
+            window.__soulPerformance ||
+            (window.__soulPerformance = {
+              renderer: hasGL ? "WebGL" : "Canvas",
+              frames: [],
+            });
+          stats.frames.push(performance.now() - frameStart);
+          if (stats.frames.length > 180) stats.frames.shift();
+          stats.effectAllocations = ringPool.created;
+          stats.activeEffects = ringPool.active.size;
+        }
         lastDraw = elapsed;
+        if (!readySent) {
+          readySent = true;
+          handlers.current.onReady?.();
+        }
       }
     }
     animate();
@@ -1972,6 +2122,9 @@ export default function World({
         }
       });
       scene.background?.dispose();
+      bloom?.dispose();
+      outputPass?.dispose();
+      composer?.dispose();
       renderer.dispose();
       renderer.domElement.remove();
       labels.forEach((l) => l.node.remove());

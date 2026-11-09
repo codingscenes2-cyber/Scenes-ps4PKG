@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Flame,
@@ -56,9 +56,12 @@ import { gearRarity } from "./progression";
 import { encodeSave } from "./saveTransport";
 import { RecoveryBoundary, installErrorLogging } from "./RecoveryBoundary";
 import { SoulAudio } from "./audio";
-import World from "./World";
+const World = lazy(() => import("./World"));
+const CharacterViewer = lazy(() => import("./CharacterViewer"));
+import SettingsPanel from "./SettingsPanel";
+import { loadPreferences, savePreferences } from "./preferences";
 import { unseal, SECRET_GATES, secretOpen } from "./exploration";
-import CharacterViewer from "./CharacterViewer";
+
 import {
   CHAPTERS,
   ECHOES,
@@ -89,6 +92,7 @@ import {
   flaskCount,
   spendLevel,
   SAVE_KEY,
+  saveHealth,
 } from "./state";
 import "./style.css";
 const Icon = ({ name, ...props }) => {
@@ -112,8 +116,10 @@ function Modal({ title, eyebrow, children, onClose, wide = false }) {
     const root = dialog.current;
     const controls = () =>
       [
-        ...root.querySelectorAll('button,input,select,textarea,[tabindex="0"]'),
-      ].filter((el) => !el.disabled);
+        ...root.querySelectorAll(
+          'button,input,select,textarea,a[href],[tabindex="0"]',
+        ),
+      ].filter((el) => !el.disabled && el.getClientRects().length);
     controls()[0]?.focus();
     const key = (e) => {
       if (e.key === "Escape") onClose();
@@ -131,7 +137,40 @@ function Modal({ title, eyebrow, children, onClose, wide = false }) {
       }
     };
     window.addEventListener("keydown", key);
+    let menuFrame;
+    const padNow = () =>
+      Array.from(navigator.getGamepads?.() || []).find(
+        (p) => p?.connected && p.mapping === "standard",
+      );
+    let previousButtons = padNow()?.buttons.map((b) => b.pressed) || [],
+      lastMove = 0;
+    const menuPad = (now) => {
+      const pad = padNow();
+      if (pad) {
+        const pressed = (i) => pad.buttons[i]?.pressed && !previousButtons[i];
+        const list = controls();
+        const direction =
+          pad.buttons[13]?.pressed || pad.axes[1] > 0.55
+            ? 1
+            : pad.buttons[12]?.pressed || pad.axes[1] < -0.55
+              ? -1
+              : 0;
+        if (direction && now - lastMove > 250) {
+          lastMove = now;
+          const current = list.indexOf(document.activeElement);
+          const next = list[(current + direction + list.length) % list.length];
+          next?.focus();
+          next?.scrollIntoView({ block: "nearest" });
+        }
+        if (pressed(0)) document.activeElement?.click();
+        if (pressed(1) || pressed(9)) onClose();
+        previousButtons = pad.buttons.map((b) => b.pressed);
+      } else previousButtons = [];
+      menuFrame = requestAnimationFrame(menuPad);
+    };
+    menuFrame = requestAnimationFrame(menuPad);
     return () => {
+      cancelAnimationFrame(menuFrame);
       window.removeEventListener("keydown", key);
       prior?.focus();
     };
@@ -480,6 +519,13 @@ function CharacterCreation({ onCreate, onClose }) {
   );
 }
 function App() {
+  const [preferences, setPreferences] = useState(loadPreferences);
+  const [loadingRegion, setLoadingRegion] = useState(true);
+  const [recovered] = useState(() => saveHealth() === "recovered");
+  useEffect(() => {
+    savePreferences(preferences);
+    audioRef.current?.setMix(preferences);
+  }, [preferences]);
   const [state, setState] = useState(() => loadSave()),
     [panel, setPanel] = useState(null),
     [active, setActive] = useState(false),
@@ -504,7 +550,12 @@ function App() {
     sceneRef = useRef(),
     stickRef = useRef(),
     moodRef = useRef();
-  moodRef.current = { region: state?.region || 0, boss: !!target.enemy?.boss };
+  moodRef.current = {
+    region: state?.region || 0,
+    boss: !!target.enemy?.boss,
+    combat: !!target.enemy,
+    paused: !!panel || !active,
+  };
   useEffect(() => {
     const previous = document.body.style.overflow;
     if (panel || expanded) document.body.style.overflow = "hidden";
@@ -530,8 +581,8 @@ function App() {
   const campaign = campaignState(state);
   const regionalChapter = CHAPTERS.find((c) => c.region === state?.region);
   const max = state ? limits(state) : { hp: 228, stamina: 112, focus: 90 };
-  const notify = (text, type = "info") => {
-    audioRef.current?.cue(type, text);
+  const notify = (text, type = "info", spatial = null) => {
+    audioRef.current?.cue(type, text, spatial);
     setNotices((n) => [
       ...n.slice(-2),
       { text, type, id: Date.now() + Math.random() },
@@ -599,6 +650,7 @@ function App() {
       notify("Discover a connecting road before venturing here.");
       return;
     }
+    setLoadingRegion(true);
     update({
       ...s,
       region: i,
@@ -682,11 +734,16 @@ function App() {
     if (!C) return;
     audioRef.current = new SoulAudio(C, () => ({
       ...moodRef.current,
-      paused: document.hidden,
+      paused: document.hidden || moodRef.current.paused,
     }));
+    audioRef.current.setMix(preferences);
     audioRef.current.ctx.resume().catch(() => {});
     setAudio(true);
   };
+  const keyLabel = (action) =>
+    preferences.bindings[action] === " "
+      ? "SPACE"
+      : preferences.bindings[action].toUpperCase();
   const nav = (t) => {
     setTab(t);
     if (t === "World") setPanel(null);
@@ -699,7 +756,10 @@ function App() {
     WEAPONS.find((w) => w.name === state?.weapon) ||
     WEAPONS[0];
   return (
-    <div className="app">
+    <div
+      className={`app ${preferences.highContrast ? "high-contrast" : ""} ${preferences.reducedMotion ? "reduced-motion" : ""}`}
+      data-vision={preferences.colorblind}
+    >
       <header className="header">
         <a
           className="brand"
@@ -780,18 +840,33 @@ function App() {
             ref={sceneRef}
             className={`game-card ${expanded ? "expanded" : ""} ${active ? "playing" : ""}`}
           >
-            <World
-              state={state}
-              stateRef={stateRef}
-              active={active}
-              paused={!!panel}
-              onChange={update}
-              onEvent={notify}
-              onTarget={(v) => setTarget((t) => ({ ...t, ...v }))}
-              onInteract={interact}
-              actionRef={actionRef}
-              epoch={epoch}
-            />
+            <Suspense
+              fallback={
+                <div className="realm-loading" role="status">
+                  Gathering the realm…
+                </div>
+              }
+            >
+              <World
+                preferences={preferences}
+                onReady={() => setLoadingRegion(false)}
+                state={state}
+                stateRef={stateRef}
+                active={active}
+                paused={!!panel}
+                onChange={update}
+                onEvent={notify}
+                onTarget={(v) => setTarget((t) => ({ ...t, ...v }))}
+                onInteract={interact}
+                actionRef={actionRef}
+                epoch={epoch}
+              />
+            </Suspense>
+            {loadingRegion && (
+              <div className="realm-loading" role="status">
+                Opening the pilgrim road…
+              </div>
+            )}
             {!active && <div className="hero-art" />}
             <div className="scene-vignette" />
             <div className="scene-top">
@@ -889,7 +964,7 @@ function App() {
                 )}
                 <div className="interaction">
                   <button onClick={() => actionRef.current?.action("interact")}>
-                    <kbd>E</kbd>
+                    <kbd>{keyLabel("interact")}</kbd>
                     {target.interaction}
                   </button>
                 </div>
@@ -899,7 +974,7 @@ function App() {
                     <b>{state.flasks}</b>
                   </div>
                   <span>
-                    Cinder flask <kbd>Q</kbd>
+                    Cinder flask <kbd>{keyLabel("heal")}</kbd>
                   </span>
                 </div>
                 <div className="touch-controls">
@@ -1030,16 +1105,19 @@ function App() {
                 </div>
                 <div className="desktop-actions">
                   <span>
-                    <kbd>W A S D</kbd> Move
+                    <kbd>
+                      {["up", "left", "down", "right"].map(keyLabel).join(" ")}
+                    </kbd>{" "}
+                    Move
                   </span>
                   <span>
-                    <kbd>J</kbd> Attack
+                    <kbd>{keyLabel("light")}</kbd> Attack
                   </span>
                   <span>
-                    <kbd>K</kbd> Heavy
+                    <kbd>{keyLabel("heavy")}</kbd> Heavy
                   </span>
                   <span>
-                    <kbd>SPACE</kbd> Dodge
+                    <kbd>{keyLabel("dodge")}</kbd> Dodge
                   </span>
                   <button onClick={() => open("controls")}>
                     All controls <HelpCircle size={13} />
@@ -1305,7 +1383,11 @@ function App() {
       </main>
       <div className="notices" aria-live="polite">
         {notices
-          .filter((n) => n.type !== "death")
+          .filter(
+            (n) =>
+              n.type !== "death" &&
+              (preferences.subtitles || n.type !== "combat"),
+          )
           .map((n) => (
             <div className={`notice ${n.type}`} key={n.id}>
               {n.type === "victory" ? (
@@ -1441,6 +1523,11 @@ function App() {
                   {item.name}
                   {state.weapon === item.name ? ` +${state.upgrade}` : ""}
                 </h3>
+                <span
+                  className={`rarity rarity-${gearRarity(item.name, REGIONS).toLowerCase()}`}
+                >
+                  {gearRarity(item.name, REGIONS)} · origin tier
+                </span>
                 <blockquote>“{item.lore}”</blockquote>
                 <div className="stat-grid">
                   <span>
@@ -1618,7 +1705,9 @@ function App() {
           </div>
           <div className="character-layout">
             <div className="character-art">
-              <CharacterViewer state={state} />
+              <Suspense fallback={<p>Gathering the wanderer…</p>}>
+                <CharacterViewer state={state} />
+              </Suspense>
               <p>
                 {state.gender} · {state.appearance}
               </p>
@@ -2275,19 +2364,29 @@ function App() {
           </p>
           <div className="controls-grid">
             {[
-              ["W A S D / Arrows", "Move"],
-              ["Shift + move", "Sprint"],
-              ["J / Hold J", "Light / charged attack"],
-              ["K", "Heavy attack"],
-              ["Space / V", "Dodge / backstep"],
-              ["B (hold)", "Block"],
-              ["F", "Parry"],
-              ["X", "Jump attack"],
-              ["C", "Weapon skill"],
-              ["R", "Cast attuned spell"],
-              ["Q", "Drink healing flask"],
-              ["Tab", "Lock target"],
-              ["E", "Interact / gather / recover"],
+              [
+                ["up", "left", "down", "right"].map(keyLabel).join(" ") +
+                  " / Arrows",
+                "Move",
+              ],
+              [keyLabel("sprint") + " + move", "Sprint"],
+              [
+                `${keyLabel("light")} / Hold ${keyLabel("light")}`,
+                "Light / charged attack",
+              ],
+              [keyLabel("heavy"), "Heavy attack"],
+              [
+                `${keyLabel("dodge")} / ${keyLabel("backstep")}`,
+                "Dodge / backstep",
+              ],
+              [`${keyLabel("block")} (hold)`, "Block"],
+              [keyLabel("parry"), "Parry"],
+              [keyLabel("jump"), "Jump attack"],
+              [keyLabel("skill"), "Weapon skill"],
+              [keyLabel("magic"), "Cast attuned spell"],
+              [keyLabel("heal"), "Drink healing flask"],
+              [keyLabel("lock"), "Lock target"],
+              [keyLabel("interact"), "Interact / gather / recover"],
               ["Esc", "Pause"],
             ].map(([k, v]) => (
               <div key={k}>
@@ -2380,6 +2479,7 @@ function App() {
               {audio ? <Volume2 size={16} /> : <VolumeX size={16} />}
             </button>
           </div>
+          <SettingsPanel preferences={preferences} onChange={setPreferences} />
           <div className="settings-row">
             <div>
               <h3>Campaign difficulty</h3>
@@ -2390,7 +2490,11 @@ function App() {
           <div className="settings-row">
             <div>
               <h3>Local save</h3>
-              <p>Saved automatically every two seconds.</p>
+              <p>
+                {recovered
+                  ? "Recovered the last good snapshot after detecting a damaged save."
+                  : "Saved every two seconds, with a last-good recovery copy."}
+              </p>
             </div>
             <Save size={20} />
           </div>
