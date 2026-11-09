@@ -1,0 +1,18 @@
+{
+  "bufferSeconds": 0.2,
+  "lightRecovery": 0.47,
+  "heavyRecovery": 0.85,
+  "lightStartup": 0.12,
+  "heavyStartup": 0.22,
+  "dodgeCost": 22,
+  "dodgeRecovery": 0.6,
+  "lightIFrames": 0.46,
+  "heavyIFrames": 0.3,
+  "dodgeTravel": 0.27,
+  "cancelRemainder": 0.28,
+  "hitStop": 0.045,
+  "heavyHitStop": 0.07,
+  "healRecovery": 0.8,
+  "staminaDelay": 0.65,
+  "meleeArc": 2.8
+}

@@ -1,0 +1,697 @@
+[
+  {
+    "id": 0,
+    "biome": "Cinder meadow",
+    "faction": "Bell",
+    "enemies": [
+      {
+        "name": "Bell deserter",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Cinder acolyte",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      },
+      {
+        "name": "Oathless guard",
+        "behavior": "sentinel",
+        "className": "Knight",
+        "weapon": "Oathkeeper"
+      }
+    ],
+    "lighting": {
+      "color": "#bba778",
+      "exposure": 1.05
+    },
+    "music": {
+      "root": 55,
+      "interval": [2, 5, 9],
+      "pulse": 650
+    },
+    "hazards": [],
+    "staminaRegen": 26,
+    "loot": {
+      "essence": 65,
+      "embers": 1
+    },
+    "arena": {
+      "x": 1,
+      "z": -37,
+      "radius": 17
+    },
+    "signature": null
+  },
+  {
+    "id": 1,
+    "biome": "Haunted woodland",
+    "faction": "Thorn",
+    "enemies": [
+      {
+        "name": "Thorn prowler",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Spore cantor",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Bark sentinel",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      }
+    ],
+    "lighting": {
+      "color": "#78956a",
+      "exposure": 0.88
+    },
+    "music": {
+      "root": 58.27,
+      "interval": [3, 7, 10],
+      "pulse": 650
+    },
+    "hazards": [],
+    "staminaRegen": 26,
+    "loot": {
+      "essence": 100,
+      "embers": 1
+    },
+    "arena": {
+      "x": 1,
+      "z": -37,
+      "radius": 17
+    },
+    "signature": {
+      "id": "life",
+      "name": "The hungry cradle",
+      "shape": "ring",
+      "radius": 6.8,
+      "inner": 3,
+      "windup": 1.65,
+      "recovery": 1.6,
+      "power": 0.95,
+      "hint": "The inner circle is safe. A thorn hit feeds the Widow."
+    }
+  },
+  {
+    "id": 2,
+    "biome": "Fallen capital",
+    "faction": "Gate",
+    "enemies": [
+      {
+        "name": "Gate deserter",
+        "behavior": "sentinel",
+        "className": "Knight",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Royal inquisitor",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      },
+      {
+        "name": "Refuge warden",
+        "behavior": "sentinel",
+        "className": "Knight",
+        "weapon": "Oathkeeper"
+      }
+    ],
+    "lighting": {
+      "color": "#a2a6b0",
+      "exposure": 0.95
+    },
+    "music": {
+      "root": 65.406,
+      "interval": [2, 5, 9],
+      "pulse": 650
+    },
+    "hazards": [],
+    "staminaRegen": 26,
+    "loot": {
+      "essence": 135,
+      "embers": 1
+    },
+    "arena": {
+      "x": 1,
+      "z": -37,
+      "radius": 17
+    },
+    "signature": null
+  },
+  {
+    "id": 3,
+    "biome": "Poison wetland",
+    "faction": "Reed",
+    "enemies": [
+      {
+        "name": "Reed stalker",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Rot confessor",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      },
+      {
+        "name": "Funeral guard",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      }
+    ],
+    "lighting": {
+      "color": "#95a665",
+      "exposure": 0.83
+    },
+    "music": {
+      "root": 48.999,
+      "interval": [3, 7, 10],
+      "pulse": 650
+    },
+    "hazards": [
+      {
+        "zone": "edge",
+        "threshold": 18,
+        "hp": -3
+      }
+    ],
+    "staminaRegen": 26,
+    "loot": {
+      "essence": 170,
+      "embers": 1
+    },
+    "arena": {
+      "x": 1,
+      "z": -37,
+      "radius": 17
+    },
+    "signature": {
+      "id": "death",
+      "name": "A funeral without end",
+      "shape": "circle",
+      "radius": 5.3,
+      "windup": 1.7,
+      "recovery": 1.9,
+      "power": 1,
+      "hint": "Leave the circle. A hit seals your flask for four seconds."
+    }
+  },
+  {
+    "id": 4,
+    "biome": "Glacial ridge",
+    "faction": "Rime",
+    "enemies": [
+      {
+        "name": "Rime hunter",
+        "behavior": "sentinel",
+        "className": "Knight",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Frost augur",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      },
+      {
+        "name": "Icebound knight",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      }
+    ],
+    "lighting": {
+      "color": "#aecbd6",
+      "exposure": 1.12
+    },
+    "music": {
+      "root": 73.416,
+      "interval": [2, 5, 9],
+      "pulse": 650
+    },
+    "hazards": [],
+    "staminaRegen": 15,
+    "loot": {
+      "essence": 205,
+      "embers": 2
+    },
+    "arena": {
+      "x": 1,
+      "z": -37,
+      "radius": 17
+    },
+    "signature": null
+  },
+  {
+    "id": 5,
+    "biome": "Crystal undercity",
+    "faction": "Blind",
+    "enemies": [
+      {
+        "name": "Blind tunnelblade",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      },
+      {
+        "name": "Crystal interpreter",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Deep sentry",
+        "behavior": "sentinel",
+        "className": "Knight",
+        "weapon": "Oathkeeper"
+      }
+    ],
+    "lighting": {
+      "color": "#75b3c8",
+      "exposure": 0.9
+    },
+    "music": {
+      "root": 61.735,
+      "interval": [3, 7, 10],
+      "pulse": 650
+    },
+    "hazards": [
+      {
+        "zone": "edge",
+        "threshold": 9,
+        "focus": 2.5
+      }
+    ],
+    "staminaRegen": 26,
+    "loot": {
+      "essence": 240,
+      "embers": 2
+    },
+    "arena": {
+      "x": 1,
+      "z": -37,
+      "radius": 17
+    },
+    "signature": null
+  },
+  {
+    "id": 6,
+    "biome": "Volcanic caldera",
+    "faction": "Ash",
+    "enemies": [
+      {
+        "name": "Ash marauder",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Furnace apostle",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Slag knight",
+        "behavior": "sentinel",
+        "className": "Knight",
+        "weapon": "Oathkeeper"
+      }
+    ],
+    "lighting": {
+      "color": "#ef9d62",
+      "exposure": 1.03
+    },
+    "music": {
+      "root": 51.913,
+      "interval": [2, 5, 9],
+      "pulse": 540
+    },
+    "hazards": [
+      {
+        "zone": "right",
+        "threshold": 20,
+        "hp": -8
+      }
+    ],
+    "staminaRegen": 26,
+    "loot": {
+      "essence": 275,
+      "embers": 2
+    },
+    "arena": {
+      "x": 1,
+      "z": -37,
+      "radius": 17
+    },
+    "signature": {
+      "id": "flame",
+      "name": "Names in the furnace",
+      "shape": "cone",
+      "radius": 6,
+      "arc": 2.5,
+      "windup": 1.45,
+      "recovery": 1.7,
+      "power": 1.1,
+      "hint": "Move behind Veyr. A second ember pulse follows the strike."
+    }
+  },
+  {
+    "id": 7,
+    "biome": "Glass desert",
+    "faction": "Glass",
+    "enemies": [
+      {
+        "name": "Glass outrider",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Hour thief",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      },
+      {
+        "name": "Dune keeper",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      }
+    ],
+    "lighting": {
+      "color": "#d8bf96",
+      "exposure": 1.15
+    },
+    "music": {
+      "root": 69.296,
+      "interval": [3, 7, 10],
+      "pulse": 650
+    },
+    "hazards": [],
+    "staminaRegen": 26,
+    "loot": {
+      "essence": 310,
+      "embers": 2
+    },
+    "arena": {
+      "x": 1,
+      "z": -37,
+      "radius": 17
+    },
+    "signature": {
+      "id": "time",
+      "name": "The stolen second",
+      "shape": "mark",
+      "radius": 3.4,
+      "windup": 1.9,
+      "recovery": 1.6,
+      "power": 0.9,
+      "hint": "Keep moving. This committed mark slows anyone it catches."
+    }
+  },
+  {
+    "id": 8,
+    "biome": "Subterranean ocean",
+    "faction": "Drowned",
+    "enemies": [
+      {
+        "name": "Drowned pilgrim",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      },
+      {
+        "name": "Abyss singer",
+        "behavior": "sentinel",
+        "className": "Knight",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Pearl sentinel",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      }
+    ],
+    "lighting": {
+      "color": "#7aacb4",
+      "exposure": 0.8
+    },
+    "music": {
+      "root": 46.249,
+      "interval": [2, 5, 9],
+      "pulse": 650
+    },
+    "hazards": [
+      {
+        "zone": "edge",
+        "threshold": 18,
+        "stamina": -12
+      }
+    ],
+    "staminaRegen": 26,
+    "loot": {
+      "essence": 345,
+      "embers": 2
+    },
+    "arena": {
+      "x": 1,
+      "z": -37,
+      "radius": 17
+    },
+    "signature": null
+  },
+  {
+    "id": 9,
+    "biome": "Sacred ruins",
+    "faction": "Wingless",
+    "enemies": [
+      {
+        "name": "Wingless penitent",
+        "behavior": "sentinel",
+        "className": "Knight",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Dawn herald",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      },
+      {
+        "name": "Temple guard",
+        "behavior": "sentinel",
+        "className": "Knight",
+        "weapon": "Oathkeeper"
+      }
+    ],
+    "lighting": {
+      "color": "#f5db9d",
+      "exposure": 1.2
+    },
+    "music": {
+      "root": 82.407,
+      "interval": [3, 7, 10],
+      "pulse": 650
+    },
+    "hazards": [],
+    "staminaRegen": 26,
+    "loot": {
+      "essence": 380,
+      "embers": 2
+    },
+    "arena": {
+      "x": 1,
+      "z": -37,
+      "radius": 17
+    },
+    "signature": null
+  },
+  {
+    "id": 10,
+    "biome": "Living library",
+    "faction": "Erased",
+    "enemies": [
+      {
+        "name": "Erased duelist",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Margin scribe",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      },
+      {
+        "name": "Index keeper",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      }
+    ],
+    "lighting": {
+      "color": "#b3a2d9",
+      "exposure": 0.9
+    },
+    "music": {
+      "root": 77.782,
+      "interval": [2, 5, 9],
+      "pulse": 650
+    },
+    "hazards": [],
+    "staminaRegen": 26,
+    "loot": {
+      "essence": 415,
+      "embers": 2
+    },
+    "arena": {
+      "x": 1,
+      "z": -37,
+      "radius": 17
+    },
+    "signature": {
+      "id": "memory",
+      "name": "The sentence repeated",
+      "shape": "mark",
+      "radius": 3,
+      "windup": 1.65,
+      "recovery": 1.8,
+      "power": 0.9,
+      "hint": "Leave the mark, then leave its violet echo."
+    }
+  },
+  {
+    "id": 11,
+    "biome": "Eclipsed fortress",
+    "faction": "Night",
+    "enemies": [
+      {
+        "name": "Night exile",
+        "behavior": "sentinel",
+        "className": "Knight",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Eclipse cantor",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Regent shield",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      }
+    ],
+    "lighting": {
+      "color": "#9389bd",
+      "exposure": 0.75
+    },
+    "music": {
+      "root": 43.654,
+      "interval": [3, 7, 10],
+      "pulse": 540
+    },
+    "hazards": [
+      {
+        "zone": "all",
+        "threshold": 0,
+        "focus": -0.4
+      }
+    ],
+    "staminaRegen": 26,
+    "loot": {
+      "essence": 450,
+      "embers": 2
+    },
+    "arena": {
+      "x": 1,
+      "z": -37,
+      "radius": 17
+    },
+    "signature": {
+      "id": "void",
+      "name": "The light between doors",
+      "shape": "ring",
+      "radius": 8,
+      "inner": 3.8,
+      "windup": 1.7,
+      "recovery": 1.8,
+      "power": 1,
+      "hint": "Close the distance. The outer eclipse consumes focus."
+    }
+  },
+  {
+    "id": 12,
+    "biome": "Broken dimension",
+    "faction": "Unfinished",
+    "enemies": [
+      {
+        "name": "Unfinished hunter",
+        "behavior": "caster",
+        "className": "Sorcerer",
+        "weapon": "Ashwood Staff"
+      },
+      {
+        "name": "Empty word",
+        "behavior": "hunter",
+        "className": "Assassin",
+        "weapon": "Oathkeeper"
+      },
+      {
+        "name": "Last boundary",
+        "behavior": "sentinel",
+        "className": "Knight",
+        "weapon": "Oathkeeper"
+      }
+    ],
+    "lighting": {
+      "color": "#d2c7df",
+      "exposure": 1.05
+    },
+    "music": {
+      "root": 87.307,
+      "interval": [2, 5, 9],
+      "pulse": 540
+    },
+    "hazards": [],
+    "staminaRegen": 26,
+    "loot": {
+      "essence": 485,
+      "embers": 2
+    },
+    "arena": {
+      "x": 1,
+      "z": -37,
+      "radius": 17
+    },
+    "signature": {
+      "id": "creation",
+      "name": "The right to refuse",
+      "shape": "ring",
+      "radius": 8.5,
+      "inner": 4.8,
+      "windup": 1.8,
+      "recovery": 2,
+      "power": 1.1,
+      "hint": "The Unmade alternates a wide ring and a narrow creation stroke."
+    }
+  }
+]

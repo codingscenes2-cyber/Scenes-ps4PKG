@@ -14,6 +14,20 @@ import {
   lightPillar,
   weatherAt,
 } from "./exploration";
+import {
+  TIMING,
+  ActionBuffer,
+  canDodgeCancel,
+  meleeConnects,
+} from "./combatTiming";
+import {
+  regionProfile,
+  regionalResources,
+  enemyBehavior,
+  signatureEffect,
+} from "./regions";
+import { bonuses } from "./progression";
+import { storyState } from "./story";
 import { bossMove, attackConnects } from "./combat";
 import { SoftwareRenderer } from "./SoftwareRenderer";
 import { REGIONS, WEAPONS, DIFFICULTIES, SPELLS, ARMOURS } from "./data";
@@ -105,6 +119,7 @@ export default function World({
     const el = mount.current;
     let disposed = false;
     const region = REGIONS[state?.region || 0];
+    const profile = regionProfile(state?.region || 0);
     const scene = new T.Scene();
     scene.background = skyTexture(region);
     scene.fog = new T.FogExp2(region.fog, 0.018);
@@ -124,13 +139,13 @@ export default function World({
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = T.PCFSoftShadowMap;
     renderer.toneMapping = T.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = profile.lighting.exposure;
     el.appendChild(renderer.domElement);
     const camera = new T.PerspectiveCamera(43, 1, 0.1, 160);
     camera.position.set(16, 9, 24);
     camera.lookAt(0, 3, -8);
     scene.add(new T.HemisphereLight("#d9dbc0", "#3b4031", 2));
-    const sun = new T.DirectionalLight("#ffe2a0", 3);
+    const sun = new T.DirectionalLight(profile.lighting.color, 3);
     sun.position.set(-18, 30, -20);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
@@ -451,19 +466,9 @@ export default function World({
       if (i === 3 && bossDead) return;
       const boss = i === 3;
       const mesh = createActor({
-        className: boss
-          ? "Berserker"
-          : i === 1
-            ? "Sorcerer"
-            : i === 2
-              ? "Knight"
-              : "Assassin",
+        className: boss ? "Berserker" : profile.enemies[i].className,
         role: boss ? "boss" : "enemy",
-        weapon: boss
-          ? "Griefbringer"
-          : i === 1
-            ? "Ashwood Staff"
-            : "Oathkeeper",
+        weapon: boss ? region.reward : profile.enemies[i].weapon,
         bossIndex: state?.region || 0,
         color: boss ? region.color : undefined,
       });
@@ -496,17 +501,9 @@ export default function World({
         hp: health,
         max: health,
         boss,
-        name: boss
-          ? region.boss
-          : ["Ashen Wanderer", "Grave Warden", "Hollow Sentinel"][i],
+        name: boss ? region.boss : profile.enemies[i].name,
         phase: 1,
-        personality: boss
-          ? "boss"
-          : i === 1
-            ? "caster"
-            : i === 2
-              ? "sentinel"
-              : "hunter",
+        personality: boss ? "boss" : profile.enemies[i].behavior,
         aim: null,
         introduced: false,
         mode: "idle",
@@ -769,12 +766,19 @@ export default function World({
       attackTime = 0,
       guard = false,
       dodge = null,
-      locked = false,
+      locked = null,
+      hitStop = 0,
+      shake = 0,
+      attackDuration = 0,
+      guardCounter = 0,
+      slowed = 0,
+      flaskSeal = 0,
       elapsed = 0,
       lastHud = 0,
       lastTime = 0,
       deathTimer = 0,
       holding = 0;
+    const buffer = new ActionBuffer();
     const effects = [];
     const pending = [];
     const echoHazards = [];
@@ -829,15 +833,40 @@ export default function World({
       stateRef.current = { ...stateRef.current, ...change };
       handlers.current.onChange(stateRef.current);
     };
-    const event = (text, type = "info") => handlers.current.onEvent(text, type);
-    const nearest = () =>
-      enemies
-        .filter((e) => e.hp > 0)
-        .sort(
-          (a, b) =>
-            hero.position.distanceTo(a.mesh.position) -
-            hero.position.distanceTo(b.mesh.position),
-        )[0];
+    const event = (text, type = "info", position = null) =>
+      handlers.current.onEvent(
+        text,
+        type,
+        position
+          ? {
+              pan: Math.max(
+                -1,
+                Math.min(1, (position.x - hero.position.x) / 12),
+              ),
+              distance: hero.position.distanceTo(position),
+            }
+          : null,
+      );
+    const nearest = () => {
+      if (
+        locked &&
+        locked.hp > 0 &&
+        hero.position.distanceTo(locked.mesh.position) < 28
+      )
+        return locked;
+      locked = null;
+      let closest = null,
+        distance = Infinity;
+      for (const e of enemies)
+        if (e.hp > 0) {
+          const d = hero.position.distanceToSquared(e.mesh.position);
+          if (d < distance) {
+            closest = e;
+            distance = d;
+          }
+        }
+      return closest;
+    };
     function burst(pos, color = "#f2c97b", size = 1) {
       const mesh = new T.Mesh(
         new T.RingGeometry(0.3, 0.5, 24),
@@ -885,9 +914,12 @@ export default function World({
         ...(kind === "skill" ? { focus: s.focus - 12 } : {}),
       });
       cooldown =
-        (kind === "heavy" || kind === "charged" ? 0.85 : 0.47) *
+        (kind === "heavy" || kind === "charged"
+          ? TIMING.heavyRecovery
+          : TIMING.lightRecovery) *
         (1 - Math.min(0.18, s.attrs.Dexterity * 0.004));
       attackTime = cooldown;
+      attackDuration = cooldown;
       playClip(hero, kind, cooldown);
       lastTime = elapsed;
       burst(hero.position, "#dec491", w.reach);
@@ -921,14 +953,30 @@ export default function World({
       const isBack =
         Math.cos(hero.rotation.y - target.mesh.rotation.y) > 0.65 && dist < 2.5;
       const actual =
-        target.stagger > 0 ? "riposte" : isBack ? "backstab" : kind;
+        target.stagger > 0
+          ? "riposte"
+          : isBack
+            ? "backstab"
+            : guardCounter > 0 && kind === "light"
+              ? "guardcounter"
+              : kind;
       const range = w.reach + (target.boss ? 1.2 : 0.4);
-      const delay = kind === "heavy" || kind === "charged" ? 220 : 120;
+      const delay =
+        kind === "heavy" || kind === "charged"
+          ? TIMING.heavyStartup
+          : TIMING.lightStartup;
       pending.push({
-        remaining: delay / 1000,
+        remaining: delay,
         run: () => {
           if (disposed || target.hp <= 0 || stateRef.current.hp <= 0) return;
-          if (hero.position.distanceTo(target.mesh.position) > range) {
+          if (
+            !meleeConnects(
+              hero.position,
+              target.mesh.position,
+              hero.rotation.y,
+              range,
+            )
+          ) {
             event("Your blade finds only ash.");
             return;
           }
@@ -941,10 +989,15 @@ export default function World({
             dmg = Math.round(dmg * 0.3);
           if (repeatCount > 3 && target.boss) {
             dmg = Math.round(dmg * 0.5);
-            target.timer = 0.1;
+            // Adapt damage resistance without changing an already committed windup.
             event("The enemy has learned your rhythm.");
           }
           target.hp = Math.max(0, target.hp - dmg);
+          hitStop = ["heavy", "charged", "riposte"].includes(actual)
+            ? TIMING.heavyHitStop
+            : TIMING.hitStop;
+          shake = Math.max(shake, actual === "riposte" ? 0.24 : 0.12);
+          guardCounter = 0;
           floating(dmg, target.mesh.position);
           playClip(target.mesh, "hurt", 0.25);
           burst(target.mesh.position, "#df8b60", 1.4);
@@ -960,6 +1013,7 @@ export default function World({
           event(
             `${actual === "riposte" ? "Critical riposte" : actual === "backstab" ? "Backstab" : "Strike"} · ${dmg} damage`,
             "combat",
+            target.mesh.position,
           );
           if (target.hp === 0) kill(target);
         },
@@ -999,6 +1053,30 @@ export default function World({
       const s = stateRef.current;
       if (!s || deathTimer > 0) return;
       const max = limits(s);
+      const cancellable =
+        name === "dodge" &&
+        canDodgeCancel(cooldown, attackDuration, pending.length);
+      const timed = [
+        "light",
+        "heavy",
+        "charged",
+        "skill",
+        "jump",
+        "dodge",
+        "backstep",
+        "parry",
+        "magic",
+        "heal",
+      ].includes(name);
+      if (timed && cooldown > 0 && !cancellable) {
+        buffer.push(name, elapsed);
+        return;
+      }
+      if (cancellable) {
+        cooldown = 0;
+        attackTime = 0;
+        attackDuration = 0;
+      }
       if (["light", "heavy", "charged", "skill", "jump"].includes(name)) {
         strike(name);
         return;
@@ -1020,23 +1098,32 @@ export default function World({
         return;
       }
       if (name === "lock") {
-        locked = !locked;
+        locked = locked ? null : nearest();
         event(locked ? "Target locked." : "Target released.");
         return;
       }
       if (name === "dodge" || name === "backstep") {
-        if (cooldown > 0 || s.stamina < 22) return;
+        const dodgeCost = TIMING.dodgeCost + bonuses(s).dodgeCost;
+        if (cooldown > 0 || s.stamina < dodgeCost) return;
         const weight = ARMOURS.find((a) => a.name === s.armour)?.weight || 0;
-        patch({ stamina: s.stamina - 22 });
-        invulnerable = weight > 20 ? 0.3 : 0.46;
+        patch({ stamina: s.stamina - dodgeCost });
+        invulnerable = weight > 20 ? TIMING.heavyIFrames : TIMING.lightIFrames;
         playClip(hero, "roll", 0.48);
-        cooldown = 0.6;
+        cooldown = TIMING.dodgeRecovery;
         lastTime = elapsed;
-        const len = Math.hypot(input.x, input.z);
+        const dx =
+          input.x +
+          (keys.d || keys.arrowright ? 1 : 0) -
+          (keys.a || keys.arrowleft ? 1 : 0);
+        const dz =
+          input.z +
+          (keys.s || keys.arrowdown ? 1 : 0) -
+          (keys.w || keys.arrowup ? 1 : 0);
+        const len = name === "backstep" ? 0 : Math.hypot(dx, dz);
         dodge = {
-          x: len ? input.x / len : -Math.sin(hero.rotation.y),
-          z: len ? input.z / len : -Math.cos(hero.rotation.y),
-          time: 0.27,
+          x: len ? dx / len : -Math.sin(hero.rotation.y),
+          z: len ? dz / len : -Math.cos(hero.rotation.y),
+          time: TIMING.dodgeTravel,
         };
         return;
       }
@@ -1051,6 +1138,10 @@ export default function World({
         return;
       }
       if (name === "heal") {
+        if (flaskSeal > 0) {
+          event(`The funeral seal holds · ${Math.ceil(flaskSeal)}s.`);
+          return;
+        }
         if (!s.flasks) {
           event("Your flask is empty. Rest at a sanctuary.");
           return;
@@ -1059,8 +1150,13 @@ export default function World({
           event("Your vitality is already full.");
           return;
         }
+        cooldown = TIMING.healRecovery;
+        attackDuration = 0;
         patch({
-          hp: Math.min(max.hp, s.hp + Math.round(max.hp * 0.55)),
+          hp: Math.min(
+            max.hp,
+            s.hp + Math.round(max.hp * (0.55 + bonuses(s).healing)),
+          ),
           flasks: s.flasks - 1,
         });
         playClip(hero, "heal", 0.8);
@@ -1070,11 +1166,12 @@ export default function World({
       }
       if (name === "magic") {
         const spell = SPELLS.find((x) => x.name === s.spell) || SPELLS[0];
-        if (cooldown > 0 || s.focus < spell.cost) {
+        const focusCost = Math.ceil(spell.cost * (1 + bonuses(s).focusCost));
+        if (cooldown > 0 || s.focus < focusCost) {
           event("Not enough focus, or still recovering.");
           return;
         }
-        patch({ focus: s.focus - spell.cost });
+        patch({ focus: s.focus - focusCost });
         cooldown = 0.9;
         playClip(hero, "cast", 0.9);
         burst(hero.position, "#a1cbd5", 4);
@@ -1148,8 +1245,8 @@ export default function World({
           if (!s.secret.includes(l.id)) {
             patch({
               secret: [...s.secret, l.id],
-              materials: s.materials + (l.secret ? 4 : 1),
-              essence: s.essence + (l.secret ? 100 : 30),
+              materials: s.materials + (l.secret ? 4 : profile.loot.embers),
+              essence: s.essence + (l.secret ? 100 + s.region * 20 : profile.loot.essence),
             });
             l.mesh.visible = false;
             l.light.visible = false;
@@ -1279,6 +1376,7 @@ export default function World({
       input.x = 0;
       input.z = 0;
       guard = false;
+      buffer.clear();
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
@@ -1297,7 +1395,10 @@ export default function World({
     let lastDraw = -1;
     function animate() {
       frame = requestAnimationFrame(animate);
-      const dt = Math.min(clock.getDelta(), 0.05);
+      const realDelta = Math.min(clock.getDelta(), 0.05);
+      const dt = hitStop > 0 ? 0 : realDelta;
+      hitStop = Math.max(0, hitStop - realDelta);
+      shake = Math.max(0, shake - realDelta * 1.5);
       elapsed += dt;
       flame.scale.set(
         0.8 + Math.sin(elapsed * 14) * 0.15,
@@ -1360,7 +1461,7 @@ export default function World({
           effects.splice(i, 1);
         }
       }
-      const s = stateRef.current;
+      let s = stateRef.current;
       const h = handlers.current;
       for (let i = labels.length - 1; i >= 0; i--) {
         const label = labels[i];
@@ -1430,6 +1531,17 @@ export default function World({
           }
         }
         cooldown = Math.max(0, cooldown - dt);
+        const followup = buffer.take(
+          elapsed,
+          cooldown <= 0 ||
+            (buffer.entry?.action === "dodge" &&
+              canDodgeCancel(cooldown, attackDuration, pending.length)),
+        );
+        if (followup) action(followup);
+        s = stateRef.current;
+        guardCounter = Math.max(0, guardCounter - dt);
+        slowed = Math.max(0, slowed - dt);
+        flaskSeal = Math.max(0, flaskSeal - dt);
         invulnerable = Math.max(0, invulnerable - dt);
         parry = Math.max(0, parry - dt);
         attackTime = Math.max(0, attackTime - dt);
@@ -1453,7 +1565,7 @@ export default function World({
           if (dodge.time <= 0) dodge = null;
         }
         const sprint = keys.shift && s.stamina > 3 && len > 0;
-        const speed = dodge ? 15 : sprint ? 7 : 4;
+        const speed = (dodge ? 15 : sprint ? 7 : 4) * (slowed > 0 ? 0.65 : 1);
         let nx = hero.position.x + mx * speed * dt,
           nz = hero.position.z + mz * speed * dt;
         if (
@@ -1475,10 +1587,14 @@ export default function World({
         if (sprint) {
           stamina = Math.max(0, stamina - dt * 15);
           lastTime = elapsed;
-        } else if (elapsed - lastTime > 0.65)
+        } else if (elapsed - lastTime > TIMING.staminaDelay)
           stamina = Math.min(
             max.stamina,
-            stamina + dt * (s.region === 4 ? 15 : 26) * (guard ? 0.35 : 1),
+            stamina +
+              dt *
+                profile.staminaRegen *
+                (1 + bonuses(s).regen) *
+                (guard ? 0.35 : 1),
           );
         let hp = s.hp;
         let focus = s.focus;
@@ -1551,37 +1667,43 @@ export default function World({
             e.introduced = true;
             event(`${e.name} stirs. The old road falls silent.`, "combat");
           }
-          const desiredRange = e.personality === "caster" ? 10 : 2.3;
-          if (
-            e.personality === "sentinel" &&
-            e.mode !== "windup" &&
-            e.mode !== "recovery" &&
-            dist < 4 &&
-            e.timer > 0.2
-          )
-            e.mode = "guard";
-          if (
-            e.hp < e.max * 0.2 &&
-            !e.boss &&
-            e.mode !== "windup" &&
-            dist < 4
-          ) {
-            const retreat = e.mesh.position
-              .clone()
-              .sub(hero.position)
-              .normalize();
-            e.mesh.position.addScaledVector(retreat, dt * 1.6);
+          const behavior = enemyBehavior(
+            e,
+            dist,
+            Math.hypot(
+              e.mesh.position.x - e.homeX,
+              e.mesh.position.z - e.homeZ,
+            ),
+          );
+          if (behavior === "return") {
+            const home = new T.Vector3(e.homeX, 0, e.homeZ);
+            e.mesh.position.addScaledVector(
+              home.sub(e.mesh.position).normalize(),
+              dt * 4,
+            );
+            e.hp = Math.min(e.max, e.hp + dt * e.max * 0.12);
+            e.mode = "returning";
+            e.ring.material.opacity = 0;
+            continue;
           }
-          if (
-            dist < 22 &&
-            dist > desiredRange &&
-            e.mode !== "windup" &&
-            e.mode !== "recovery"
-          ) {
+          if (behavior === "guard") e.mode = "guard";
+          if (behavior === "retreat") {
+            e.mode = "retreating";
+            e.mesh.position.addScaledVector(
+              e.mesh.position.clone().sub(hero.position).normalize(),
+              dt * 1.6,
+            );
+          }
+          if (behavior === "chasing") {
             e.mode = "chasing";
-            const dir = hero.position.clone().sub(e.mesh.position).normalize();
-            const sp = e.boss ? (e.hp < e.max * 0.4 ? 3.4 : 2.3) : 1.8;
-            e.mesh.position.addScaledVector(dir, dt * sp);
+            const direction = hero.position
+              .clone()
+              .sub(e.mesh.position)
+              .normalize();
+            e.mesh.position.addScaledVector(
+              direction,
+              dt * (e.boss ? (e.hp < e.max * 0.4 ? 3.4 : 2.3) : 1.8),
+            );
           }
           e.mesh.position.y = terrain(e.mesh.position.x, e.mesh.position.z);
           if (e.mode !== "windup" && e.mode !== "recovery")
@@ -1627,9 +1749,18 @@ export default function World({
                     guard && stamina > 0,
                   );
                   hp = Math.max(0, hp - dmg);
+                  shake = Math.max(shake, 0.16);
+                  const status = signatureEffect(e.move?.signature);
+                  if (status.heal) e.hp = Math.min(e.max, e.hp + status.heal);
+                  if (status.focus) focus = Math.max(0, focus - status.focus);
+                  if (status.stamina)
+                    stamina = Math.max(0, stamina - status.stamina);
+                  slowed = Math.max(slowed, status.slow || 0);
+                  flaskSeal = Math.max(flaskSeal, status.flaskSeal || 0);
                   floating(`−${dmg}`, hero.position, true);
                   playClip(hero, "hurt", 0.25);
                   if (guard) {
+                    guardCounter = 0.75;
                     stamina = Math.max(0, stamina - 23);
                     if (stamina === 0) {
                       cooldown = 1.1;
@@ -1639,7 +1770,7 @@ export default function World({
                   burst(hero.position, "#bb6652", 1);
                 }
               }
-              if (s.region === 10) {
+              if (s.region === 10 || e.move?.signature === "flame") {
                 const center = (
                   e.personality === "caster" && e.aim ? e.aim : e.mesh.position
                 ).clone();
@@ -1659,12 +1790,14 @@ export default function World({
                 echoHazards.push({
                   center,
                   ring,
-                  time: 1,
+                  time: e.move?.signature === "flame" ? 1.6 : 1,
                   radius: e.boss ? 4.6 : 2.5,
                   power: e.boss ? 32 : 16,
                 });
                 event(
-                  "A memory of the strike lingers. Leave the violet circle.",
+                  e.move?.signature === "flame"
+                    ? "A furnace echo gathers. Leave the violet circle."
+                    : "A memory of the strike lingers. Leave the violet circle.",
                   "combat",
                 );
               }
@@ -1706,24 +1839,25 @@ export default function World({
               e.aim = hero.position.clone();
               e.ring.scale.setScalar(1);
               showTelegraph(e);
-              event(`${e.name} prepares ${e.move.name}.`, "combat");
+              event(
+                `${e.name} prepares ${e.move.name}.${e.move.hint ? " " + e.move.hint : ""}`,
+                "combat",
+                e.mesh.position,
+              );
             }
           }
-          if (locked && e === nearest())
+          if (locked === e)
             hero.rotation.y = Math.atan2(
               e.mesh.position.x - hero.position.x,
               e.mesh.position.z - hero.position.z,
             );
         }
-        if (s.region === 8 && Math.abs(hero.position.x) > 18)
-          stamina = Math.max(0, stamina - dt * 12);
-        if (s.region === 5 && Math.abs(hero.position.x) > 9)
-          focus = Math.min(max.focus, focus + dt * 2.5);
-        if (s.region === 3 && Math.abs(hero.position.x) > 18)
-          hp = Math.max(0, hp - dt * 3);
-        if (s.region === 6 && hero.position.x > 20)
-          hp = Math.max(0, hp - dt * 8);
-        if (s.region === 11) focus = Math.max(0, focus - dt * 0.4);
+        ({ hp, stamina, focus } = regionalResources(
+          { ...s, hp, stamina, focus },
+          hero.position,
+          dt,
+          max,
+        ));
         if (hp <= 0 && deathTimer === 0) {
           pending.length = 0;
           deathTimer = 2.3;
@@ -1732,7 +1866,11 @@ export default function World({
         }
         const nextTime = (s.time + dt * 0.12) % 24;
         const night = nextTime >= 18 || nextTime < 6;
-        sun.intensity = night ? 0.9 : 3;
+        const fate = Object.values(storyState(s).thrones).filter(
+          (v) => v === "restore",
+        ).length;
+        sun.intensity = (night ? 0.9 : 3) + fate * 0.07;
+        scene.fog.density *= 1 - fate * 0.025;
         scene.userData.lightFactor = night ? 0.65 : 1;
         if (nextTime < s.time) {
           stateRef.current = {
@@ -1777,6 +1915,15 @@ export default function World({
                     max: e.max,
                     boss: e.boss,
                     phase: e.phase,
+                    locked: locked === e,
+                    status:
+                      flaskSeal > 0
+                        ? `Flask sealed ${Math.ceil(flaskSeal)}s`
+                        : slowed > 0
+                          ? "Time slowed"
+                          : guardCounter > 0
+                            ? "Guard counter ready"
+                            : "",
                     stance:
                       e.mode === "windup" && e.move ? e.move.name : e.mode,
                     distance: Math.round(
@@ -1786,13 +1933,14 @@ export default function World({
                 : null,
           });
         }
-        const desired = hero.position.clone().add(new T.Vector3(8, 8, 12));
+        const focusPoint = hero.position.clone();
+        if (locked && locked.hp > 0)
+          focusPoint.lerp(locked.mesh.position, 0.35);
+        const desired = focusPoint.clone().add(new T.Vector3(8, 8, 12));
         camera.position.lerp(desired, dt * 2);
-        camera.lookAt(
-          hero.position.x,
-          hero.position.y + 1.1,
-          hero.position.z - 3,
-        );
+        camera.position.x += Math.sin(performance.now() * 0.09) * shake;
+        camera.position.y += Math.cos(performance.now() * 0.07) * shake * 0.5;
+        camera.lookAt(focusPoint.x, focusPoint.y + 1.1, focusPoint.z - 3);
       } else if (!h.active) {
         camera.position.x = 15;
         camera.lookAt(-1, 3, -12);

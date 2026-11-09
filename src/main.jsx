@@ -49,6 +49,7 @@ import {
   Droplets,
   Save,
 } from "lucide-react";
+import { regionProfile } from "./regions";
 import { SkillTree, ThroneArcs } from "./ProgressionPanels";
 import { endingCoda } from "./story";
 import { gearRarity } from "./progression";
@@ -868,11 +869,13 @@ function App() {
                     className={`enemy-hud ${target.enemy.boss ? "boss" : ""}`}
                   >
                     <div>
+                      {target.enemy.locked ? "◎ " : ""}
                       {target.enemy.name}
                       <small>
                         {target.enemy.boss
                           ? `PHASE ${target.enemy.phase} · ${target.enemy.stance}`
                           : `${target.enemy.stance} · ${target.enemy.distance}m`}
+                        {target.enemy.status && ` · ${target.enemy.status}`}
                       </small>
                     </div>
                     <div className="enemy-bar">
@@ -1795,7 +1798,9 @@ function App() {
               ) : (
                 <p className="muted">Your first page is still blank.</p>
               )}
-              <h3 className="lore-heading">A fragment of history</h3>
+              <h3 className="lore-heading">
+                {regionProfile(state.region).biome}
+              </h3>
               <blockquote>{region.lore}</blockquote>
               <p className="muted">
                 {state.bosses.length} guardians defeated · {state.secret.length}{" "}

@@ -1,3 +1,4 @@
+import { regionProfile } from "./regions.js";
 // The visible ground shapes and damage queries share this definition.
 const sweep = {
   name: "Grave sweep",
@@ -55,6 +56,17 @@ export function bossMove(region, phase, turn) {
       : phase === 2
         ? [sweep, mark, slam]
         : [mark, sweep, toll, slam];
+  const signature = regionProfile(region).signature;
+  if (signature && phase >= 2 && turn % 3 === 2) {
+    const { id, hint, ...move } = signature;
+    if (id === "creation" && turn % 2 === 0) {
+      move.shape = "cone";
+      move.arc = 1.15;
+      move.radius = 9;
+      delete move.inner;
+    }
+    return { ...move, signature: id, hint };
+  }
   const source = pattern[turn % pattern.length];
   const names = themes[region] || themes[0];
   return {
