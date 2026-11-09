@@ -7,6 +7,7 @@ import {
   REGIONS,
 } from "./data.js";
 import { campaignState } from "./campaign.js";
+import { encodeSave, decodeSave } from "./saveTransport.js";
 export const SAVE_KEY = "soul-land-save-v1";
 export const softCap = (v) => (v <= 30 ? v : 30 + (v - 30) * 0.45);
 export const limits = (s) => ({
@@ -75,9 +76,9 @@ export function createCharacter(c) {
     focus: limits(s).focus,
   };
 }
-export function loadSave(storage = globalThis.localStorage) {
+export const BACKUP_KEY = SAVE_KEY + "-backup";
+export function validateSave(s) {
   try {
-    const s = JSON.parse(storage.getItem(SAVE_KEY));
     if (
       s?.version !== 1 ||
       !CLASSES.some((c) => c.name === s.className) ||
@@ -146,9 +147,33 @@ export function loadSave(storage = globalThis.localStorage) {
     return null;
   }
 }
+export function loadSave(storage = globalThis.localStorage) {
+  try {
+    return (
+      validateSave(decodeSave(storage.getItem(SAVE_KEY))) ||
+      validateSave(decodeSave(storage.getItem(BACKUP_KEY)))
+    );
+  } catch {
+    return null;
+  }
+}
+export function saveHealth(storage = globalThis.localStorage) {
+  try {
+    if (validateSave(decodeSave(storage.getItem(SAVE_KEY)))) return "primary";
+    return validateSave(decodeSave(storage.getItem(BACKUP_KEY)))
+      ? "recovered"
+      : "empty";
+  } catch {
+    return "unavailable";
+  }
+}
 export function saveGame(s, storage = globalThis.localStorage) {
   try {
-    storage.setItem(SAVE_KEY, JSON.stringify(s));
+    if (!validateSave(s)) return false;
+    const previous = storage.getItem?.(SAVE_KEY);
+    if (validateSave(decodeSave(previous)))
+      storage.setItem(BACKUP_KEY, previous);
+    storage.setItem(SAVE_KEY, encodeSave(s));
     return true;
   } catch {
     return false;

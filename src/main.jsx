@@ -49,6 +49,8 @@ import {
   Droplets,
   Save,
 } from "lucide-react";
+import { encodeSave } from "./saveTransport";
+import { RecoveryBoundary, installErrorLogging } from "./RecoveryBoundary";
 import { SoulAudio } from "./audio";
 import World from "./World";
 import { unseal, SECRET_GATES, secretOpen } from "./exploration";
@@ -2348,10 +2350,9 @@ function App() {
               <button
                 className="button outline"
                 onClick={() => {
-                  const data = new Blob(
-                    [JSON.stringify(stateRef.current, null, 2)],
-                    { type: "application/json" },
-                  );
+                  const data = new Blob([encodeSave(stateRef.current)], {
+                    type: "application/json",
+                  });
                   const url = URL.createObjectURL(data);
                   const a = document.createElement("a");
                   a.href = url;
@@ -2444,7 +2445,12 @@ function App() {
     </div>
   );
 }
-createRoot(document.getElementById("root")).render(<App />);
+installErrorLogging();
+createRoot(document.getElementById("root")).render(
+  <RecoveryBoundary>
+    <App />
+  </RecoveryBoundary>,
+);
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
