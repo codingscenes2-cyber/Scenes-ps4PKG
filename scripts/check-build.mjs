@@ -30,15 +30,31 @@ const manifest = JSON.parse(
 assert.equal(manifest.start_url, "./");
 const handlers = {};
 const deleted = [];
+const fetched = [];
+let offline = false;
+const stored = new Map();
 const scope = "https://example.test/game/";
 vm.runInNewContext(worker, {
+  URL,
+  Response,
+  fetch: async (url, options) => {
+    if (offline) throw new Error("offline fixture");
+    fetched.push({ url, options });
+    return new Response("fresh-content", { status: 200 });
+  },
   self: {
     registration: { scope },
+    skipWaiting: () => Promise.resolve(),
     location: { origin: "https://example.test" },
     clients: { claim: () => Promise.resolve() },
     addEventListener: (type, fn) => (handlers[type] = fn),
   },
   caches: {
+    open: async () => ({
+      put: async (key, value) => stored.set(key, value),
+      match: async (request) => stored.get(request.url)?.clone(),
+      keys: async () => [...stored.keys()],
+    }),
     keys: async () => [
       "soul-land:" + scope + ":old",
       "soul-land:https://example.test/other/:old",
@@ -48,9 +64,31 @@ vm.runInNewContext(worker, {
   },
 });
 let completed;
+handlers.install({ waitUntil: (p) => (completed = p) });
+await completed;
+assert.equal(stored.size, files.length);
+for (const { url, options } of fetched) {
+  assert.ok(new URL(url).searchParams.get("__soul_revision"));
+  assert.equal(options.cache, "reload");
+}
+for (const key of stored.keys()) assert.equal(new URL(key).search, "");
+
+let response;
+handlers.fetch({
+  request: new Request(scope + "guide.html"),
+  respondWith: (p) => (response = p),
+});
+assert.equal(await (await response).text(), "fresh-content");
+assert.ok(fetched.at(-1).url.includes("__soul_revision="));
+offline = true;
+handlers.fetch({
+  request: new Request(scope + "guide.html"),
+  respondWith: (p) => (response = p),
+});
+assert.equal(await (await response).text(), "fresh-content");
 handlers.activate({ waitUntil: (p) => (completed = p) });
 await completed;
 assert.deepEqual(deleted, ["soul-land:" + scope + ":old"]);
 console.log(
-  `Verified ${files.length} precache paths, published references, worker syntax and scoped cache cleanup.`,
+  `Verified ${files.length} precache paths, published references, worker syntax, fresh revision requests and scoped cache cleanup.`,
 );

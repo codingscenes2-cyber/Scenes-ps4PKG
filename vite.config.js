@@ -24,6 +24,7 @@ export default defineConfig({
           ...readdirSync("public/screenshots").map((f) => "screenshots/" + f),
         ];
         const version = createHash("sha256")
+          .update("fresh-offline-v3")
           .update(files.join("-"))
           .update(
             publicFiles
@@ -39,11 +40,12 @@ export default defineConfig({
           ...publicFiles.map((f) => "./" + f),
           ...files.map((x) => "./" + x),
         ];
-        const script = `const PREFIX="soul-land:"+self.registration.scope+":";const CACHE=PREFIX+${JSON.stringify(version)};const FILES=${JSON.stringify(precache)};
-self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting())));
+        const script = `const PREFIX="soul-land:"+self.registration.scope+":";const REVISION=${JSON.stringify(version)};const CACHE=PREFIX+REVISION;const FILES=${JSON.stringify(precache)};
+const fresh=url=>{const u=new URL(url,self.registration.scope);u.searchParams.set('__soul_revision',REVISION);return u.href;};
+self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>Promise.all(FILES.map(async file=>{const canonical=new URL(file,self.registration.scope).href;const response=await fetch(fresh(canonical),{cache:'reload'});if(!response.ok)throw new Error('Precache failed');await cache.put(canonical,response);}))).then(()=>self.skipWaiting())));
 self.addEventListener('message',event=>{if(event.data?.type!=='SOUL_CACHE_STATUS')return;event.waitUntil(caches.open(CACHE).then(cache=>cache.keys()).then(keys=>event.ports[0]?.postMessage({ready:keys.length>=FILES.length,scope:self.registration.scope})));});
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith(PREFIX)&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',event=>{const url=new URL(event.request.url);if(event.request.method!=='GET'||url.origin!==self.location.origin||!url.href.startsWith(self.registration.scope))return;event.respondWith(fetch(event.request).catch(()=>caches.open(CACHE).then(cache=>cache.match(event.request,{ignoreSearch:true})).then(cached=>cached||Response.error())));});`;
+self.addEventListener('fetch',event=>{const url=new URL(event.request.url);if(event.request.method!=='GET'||url.origin!==self.location.origin||!FILES.some(f=>new URL(f,self.registration.scope).pathname===url.pathname))return;event.respondWith(fetch(fresh(url.href),{cache:'reload'}).catch(()=>caches.open(CACHE).then(cache=>cache.match(event.request,{ignoreSearch:true})).then(cached=>cached||Response.error())));});`;
         this.emitFile({ type: "asset", fileName: "sw.js", source: script });
       },
     },
